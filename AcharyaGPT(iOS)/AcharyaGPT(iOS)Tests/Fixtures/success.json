@@ -1,0 +1,8 @@
+{
+  "answer": "Drink warm water [1].",
+  "citations": [{"chunk_id":"source:1","source":"dataset V1.0.pdf","page":2,"text":"Warm water is described in the source."}],
+  "scores": [{"bm25":4.2,"dense":null,"rerank":null}],
+  "mode": "bm25_only",
+  "warning": "future_warning",
+  "outcome": "answered"
+}

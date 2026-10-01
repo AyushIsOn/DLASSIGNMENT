@@ -1,0 +1,7 @@
+{"id":"auto-pdf-answerable","kind":"answerable","query_source":"first_chunk_informative_terms"}
+{"id":"eka-kusta-answerable","kind":"answerable","query":"Which are the doshas involved in Eka kusta?"}
+{"id":"adversarial-typo","kind":"unanswerable","category":"typo","query":"Which doshas are involved in Eqa khusta?"}
+{"id":"adversarial-entity-swap","kind":"unanswerable","category":"entity_swap","query":"What does the document say about a fictional Martian dosha?"}
+{"id":"adversarial-negation","kind":"unanswerable","category":"negation","query":"Does Ayurveda not use quantum computers?"}
+{"id":"adversarial-random","kind":"unanswerable","category":"random","query":"zxqv blorf quux"}
+{"id":"adversarial-irrelevant","kind":"unanswerable","category":"irrelevant","query":"How do I repair a diesel engine gearbox?"}

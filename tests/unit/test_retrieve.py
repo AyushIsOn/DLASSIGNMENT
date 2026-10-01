@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+from acharya.rag.index import BM25Document, BM25Index
+from acharya.rag.retrieve import SupportThresholds, retrieve
+
+
+def _index() -> BM25Index:
+    documents = (
+        BM25Document("a", "fixture", 1, "", "alpha beta", "educational"),
+        BM25Document("b", "fixture", 1, "", "alpha beta", "educational"),
+    )
+    return BM25Index(
+        "fingerprint",
+        "corpus",
+        "config",
+        documents,
+        (("alpha", "beta"), ("alpha", "beta")),
+        {"alpha": 1.0, "beta": 1.0, "incidental": 1.0},
+        2.0,
+        1.5,
+        0.75,
+    )
+
+
+def test_equal_scores_sort_by_chunk_id() -> None:
+    assert [hit.document.chunk_id for hit in retrieve(_index(), "alpha beta")] == ["a", "b"]
+
+
+def test_support_requires_distinct_informative_overlap_and_raw_floor() -> None:
+    thresholds = SupportThresholds(0.5, 0.1, 2)
+    assert retrieve(_index(), "alpha incidental", thresholds)[0].supported is False
+    assert retrieve(_index(), "alpha beta", thresholds)[0].supported is True
+    high = SupportThresholds(0.5, 100.0, 2)
+    assert retrieve(_index(), "alpha beta", high)[0].supported is False
+
+
+class _DenseNearEncoder:
+    def encode_passages(self, passages: list[str]) -> list[list[float]]:
+        return [[1.0, 0.0] for _ in passages]
+
+    def encode_query(self, query: str) -> list[float]:
+        return [1.0, 0.0]
+
+
+class _HighReranker:
+    def score(self, query: str, passages: list[str]) -> list[float]:
+        return [0.99 for _ in passages]
+
+
+def test_dense_near_context_cannot_bypass_lexical_support() -> None:
+    base = _index()
+    thresholds = SupportThresholds(0.5, 0.1, 2, dense_score=0.5, rerank_score=0.5)
+    encoder = _DenseNearEncoder()
+    for mode in ("mvp_hybrid", "full"):
+        index = BM25Index(
+            base.fingerprint,
+            base.corpus_fingerprint,
+            base.config_hash,
+            base.documents,
+            base.document_tokens,
+            base.idf,
+            base.average_length,
+            base.k1,
+            base.b,
+            mode,  # type: ignore[arg-type]
+            ((1.0, 0.0), (1.0, 0.0)),
+        )
+        hits = retrieve(
+            index,
+            "incidental",
+            thresholds,
+            embedder=encoder,
+            reranker=_HighReranker() if mode == "full" else None,
+        )
+        assert hits[0].dense_score == 1.0
+        assert hits[0].supported is False

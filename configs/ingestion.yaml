@@ -1,0 +1,15 @@
+version: 1
+pdf:
+  relative_path: "data/dataset V1.0.pdf"
+  sha256: ae5a30200145559dbd0b7ce25b58e6f1a31c272b98743d8a72353a0ddfbc5322
+  expected_pages: 6
+normalization:
+  unicode: NFKC
+  lowercase_ids: true
+chunking:
+  max_words: 120
+  overlap_words: 20
+dedupe:
+  jaccard_threshold: 0.90
+  shingle_words: 5
+  minhash_seed: 1729

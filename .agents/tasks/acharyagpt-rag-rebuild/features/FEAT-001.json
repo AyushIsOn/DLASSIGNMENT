@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Implement Gate A: the locked Python project, shared safety policy, deterministic bundled-PDF pipeline, calibrated nondegenerate BM25 retrieval, extractive grounding, FastAPI/CLI, and a real network-blocked build/restart/chat verification. This is the dependency for every later feature and must not invoke generative providers.",
+  "status": "completed",
+  "steps": [
+    "Create /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/pyproject.toml, /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/uv.lock, Python package scaffolding, typed config/schemas/logging, expanded ignores, and a blank documented KIRO_CONTEXT_WINDOW_TOKENS entry in /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/.env.example without reading /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/.env.local.",
+    "Implement /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/configs/safety.yaml and /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/src/acharya/safety.py with fixed hashes, role allowlists, precedence, candidate rejection, and positive/benign-negative tests shared by serving and SFT.",
+    "Implement /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/src/acharya/ingest/loaders.py, normalize.py, dedupe.py, and pipeline.py for the real six-page PDF, stable provenance/IDs, role-isolated chunks, deterministic duplicate components, and atomic corpus activation.",
+    "Implement /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/src/acharya/rag/index.py, retrieve.py, and evaluate.py using raw BM25 ranking plus positive-IDF lexical coverage, distinct informative overlap, and calibrated raw-score floor; remove per-query max normalization and refuse readiness until zero-false-support answerable/adversarial calibration matches all hashes.",
+    "Implement immutable provider records, /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/src/acharya/providers/extractive.py, grounding/service, FastAPI health/chat, normalized errors, CLI build/evaluate/status/smoke commands, and independent Gate A/B/C reports.",
+    "Add /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/scripts/verify_gate_a.sh and inherited network-denial integration tests; execute two real PDF builds, API kill/restart, cited answer, adversarial abstention, atomic-failure, and readiness checks before writing Gate A PASSED evidence."
+  ],
+  "acceptance_criteria": [
+    "A frozen Python 3.11 environment installs and Ruff, mypy, and Gate A tests pass without external services.",
+    "Two real PDF builds produce identical fingerprints, IDs, duplicate components, counts, and index ordering; an injected failed stage leaves active pointers unchanged.",
+    "BM25 readiness cannot use 0.75 max-normalized scoring and remains false without a hash-matching calibration that has zero false support on adversarial-unanswerable rows.",
+    "Under inherited network denial, a restarted FastAPI process reports bm25_only ready without dense/reranker imports and returns a cited extractive allowed-role answer with null dense/rerank scores and bm25_only_fallback.",
+    "Urgent, self-harm, diagnosis, treatment, dose, directive, unsupported, malformed-history, and citation cases produce the specified fixed safe response, abstention, or normalized error without provider invocation.",
+    "Gate status output reports Gate A independently and leaves Gate B pending and Gate C PENDING_EXTERNAL_GPU."
+  ],
+  "verification": [
+    "PYENV_VERSION=3.11.15 uv lock --project /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild --check",
+    "PYENV_VERSION=3.11.15 uv sync --project /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild --frozen --group dev",
+    "PYENV_VERSION=3.11.15 uv run --project /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild ruff check /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/src /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/tests",
+    "PYENV_VERSION=3.11.15 uv run --project /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild mypy /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/src/acharya",
+    "PYENV_VERSION=3.11.15 uv run --project /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild pytest -q /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/tests/unit /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/tests/integration/test_api.py /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/tests/integration/test_bm25_offline.py",
+    "bash /projects/sandbox/AcharyaGPT/.worktrees/rag-rebuild/scripts/verify_gate_a.sh"
+  ],
+  "blocked_reason": null,
+  "findings": "Implemented Gate A as a Python 3.11 uv project with no generative-provider path. Decisions: use PyPDF layout extraction for the six-page word-spacing repair; preserve stable page/Q&A provenance; role-filter treatment and diagnosis chunks; rank with persisted raw Robertson BM25 and require hash-bound positive-IDF coverage, distinct overlap, and raw-score calibration; answer only with locally extracted sentence spans and fixed safety responses. Evidence: all six verification-array commands passed; Ruff and strict mypy passed; 30 unit/integration tests passed; scripts/verify_gate_a.sh built the real PDF twice, preserved the active pointer across an injected failure, built identical index ordering, calibrated with zero adversarial false support, restarted FastAPI under inherited non-loopback network denial, returned a cited answer with null dense/rerank scores and bm25_only_fallback, and abstained on the adversarial query. The generated ignored artifacts/gates/gate-a.json reported PASSED with corpus 6892eaf2b75d1fd92b2dc59278a9bfa54ca56aaa27fcd2361bcee85c8db364b8 and index 01bf35fc9131238b5ecff5b1d165ef1a3bc208a9d2ea201597ade4c73a992baf. Limitations/later features: only 11 of 24 chunks are eligible after safety-role filtering; Gate B remains PENDING and must add pinned external datasets/hybrid retrieval/provider plumbing; Gate C remains PENDING_EXTERNAL_GPU; no Kiro API, external network, dense model, reranker, macOS build, or GPU training was invoked or claimed."
+}

@@ -1,0 +1,121 @@
+version: 2
+bundled_pdf:
+  id: bundled_pdf
+  path: "data/dataset V1.0.pdf"
+  sha256: ae5a30200145559dbd0b7ce25b58e6f1a31c272b98743d8a72353a0ddfbc5322
+  pages: 6
+  license: repository-provided
+  trust_tier: project_unverified
+kaggle:
+  client_version: 2.2.4
+  prohibited:
+    - rcratos/ayurveda-texts-english/1
+  limits:
+    maximum_archive_bytes: 268435456
+    maximum_expanded_bytes: 536870912
+    maximum_member_bytes: 268435456
+    maximum_members: 20
+    allowed_extensions: [.csv, .xlsx]
+  datasets:
+    gpreda/medquad/1:
+      owner: gpreda
+      slug: medquad
+      version: 1
+      url: https://www.kaggle.com/datasets/gpreda/medquad
+      license: Apache 2.0
+      required_credit: MedQuAD dataset contributors
+      trust_tier: general_medical_secondary
+      expected_rows: 16412
+      archive_sha256: 8d09eeb3ab4a51c3c10adc67e2523756f2e98a8c3b4960e2e8d0b158f24ff037
+      members:
+        medquad.csv: f9fe9e60ea69dbbd5a6987e63d041e54e2048d09e317df830b6ba3387e706d53
+      primary_member: medquad.csv
+      headers: [question, answer, source, focus_area]
+      header_sha256: 8275330550c3c6fb194d27e5ee8804d7ed9fddb56ff08219c27eacebc821300e
+      field_map:
+        question: question
+        answer: content
+        source: source_reference
+        focus_area: topic
+      admission:
+        question_min: 5
+        question_max: 500
+        content_min: 20
+        content_max: 10000
+    akashkumarpr/ayurvedic-knowledge-dataset/1:
+      owner: akashkumarpr
+      slug: ayurvedic-knowledge-dataset
+      version: 1
+      url: https://www.kaggle.com/datasets/akashkumarpr/ayurvedic-knowledge-dataset
+      license: CC BY 4.0
+      required_credit: Ayurvedic Knowledge Dataset by Akash Kumar
+      trust_tier: ayurveda_secondary
+      expected_rows: 1000
+      archive_sha256: d49e109f41296ad843a259390bbbd144269b7064e7e150af5fd5efe361efb55e
+      members:
+        ayurvedic_knowledge_dataset.csv: f3f67afa2f88141a3252d06882961d7d01fa32cbac1f37339ca2785f0d4fedd3
+        ayurvedic_knowledge_dataset.xlsx: d6391d42bae7bfadde068e2a3d01eeae480678545b5431d95e8b1e2c728c81a9
+      primary_member: ayurvedic_knowledge_dataset.csv
+      headers: [Sr No, Ayurvedic Code, Ayurvedic Name, Modern Equivalent, System / Body Part, Dosha Predominance, Prognosis, Symptoms, Age Group, Gender, Treatment Principles, Source Text]
+      header_sha256: d967c1b1216383aebe5250ec65ae9e245ae059c921b7b42e3358a80ef3b765b1
+      field_map:
+        Sr No: external_id
+        Ayurvedic Code: ayurvedic_code
+        Ayurvedic Name: title
+        Modern Equivalent: modern_equivalent
+        System / Body Part: body_system
+        Dosha Predominance: dosha
+        Prognosis: prognosis
+        Symptoms: symptoms
+        Age Group: age_group
+        Gender: gender
+        Treatment Principles: treatment_principles
+        Source Text: source_reference
+      admission:
+        title_min: 3
+        title_max: 300
+        substantive_min: 20
+        source_required: true
+    aliainaanraza/ayurveda-healthcare-dataset/2:
+      owner: aliainaanraza
+      slug: ayurveda-healthcare-dataset
+      version: 2
+      url: https://www.kaggle.com/datasets/aliainaanraza/ayurveda-healthcare-dataset
+      license: CC BY 4.0
+      required_credit: Ayurveda Healthcare Dataset by Ali Ainaan Raza
+      trust_tier: ayurveda_authenticated_secondary
+      expected_rows: 10000
+      archive_sha256: 524104f8b96802faf977023572468db0ee873d62f1ab45e8d6eeefb1e543d177
+      members:
+        ayurveda_dataset.csv: 3a9d99e3617e5fcfa5ccef0e13c89967dfcc157a01c028067626d0d525690de7
+        ayurveda_dataset.xlsx: 8c8156886a377bb1e54bb6e928b7ecd906fc0cdf8606f98f28b37f37797b330d
+      primary_member: ayurveda_dataset.csv
+      headers: [ID, Problem, Symptoms, Remedies, Medicines, Source, Dosha Type, Body System, Chronic/Acute, Treatment Type, Contraindications, Preventive Advice, Seasonal Suitability, Gender/Age Relevance, Confidence, Classical Texts, Modern Evidence, Institutional Endorsements, WHO Strategy Reference, Authentication Notes, Auth_Score]
+      header_sha256: f5c41ff61b06b8ebf8081bcc93a9ce9a6b7249daab0c77c427744841eb2fe9bd
+      field_map:
+        ID: external_id
+        Problem: problem
+        Symptoms: symptoms
+        Remedies: remedies
+        Medicines: medicines
+        Source: source_reference
+        Dosha Type: dosha
+        Body System: body_system
+        Chronic/Acute: course
+        Treatment Type: treatment_type
+        Contraindications: contraindications
+        Preventive Advice: preventive_advice
+        Seasonal Suitability: seasonal_suitability
+        Gender/Age Relevance: gender_age_relevance
+        Confidence: confidence
+        Classical Texts: classical_texts
+        Modern Evidence: modern_evidence
+        Institutional Endorsements: institutional_endorsements
+        WHO Strategy Reference: who_strategy_reference
+        Authentication Notes: authentication_notes
+        Auth_Score: auth_score
+      admission:
+        confidence_floor: "0.60"
+        auth_score_floor: "0.80"
+        authentication_placeholders: [n/a, na, none, unknown, pending, not available, "-"]
+        negative_authentication_phrases: [not authenticated, unauthenticated, authentication failed, unverifiable, unverified, false]

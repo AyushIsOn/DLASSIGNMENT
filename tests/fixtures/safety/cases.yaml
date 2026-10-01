@@ -1,0 +1,8 @@
+positive:
+  - text: "I cannot breathe."
+    action: urgent
+  - text: "Do I have psoriasis?"
+    action: diagnosis
+benign_negative:
+  - text: "Which doshas are described for Eka kusta?"
+    action: retrieve

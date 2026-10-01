@@ -1,0 +1,49 @@
+version: 1
+allowed_roles:
+  - educational
+  - historical
+  - preventive_general
+precedence:
+  - urgent
+  - self_harm
+  - diagnosis
+  - individual_treatment
+  - dose
+  - retrieve
+responses:
+  urgent:
+    text: "If you may be in immediate danger or are thinking about harming yourself, contact local emergency services now. In the U.S. or Canada, call or text 988."
+    sha256: eec840c2acbf776a4b18a3bbfd05c7f40e247c8b7b55a6862f8f9c23750a66ff
+  refusal:
+    text: "I can provide general educational information, but I cannot diagnose a condition or recommend personalized treatment or dosing. Please consult a qualified healthcare professional."
+    sha256: c9c1c726babd48526c97bbfcd6c2be6cc192b9e62a577d70f3146dd21fea0c3c
+  abstention:
+    text: "I could not find enough supported information in the local knowledge base to answer that safely."
+    sha256: 21620a2365be0224502672f98b0018879282a581bb2bdd472c418ba54ddb90a1
+query_patterns:
+  urgent:
+    - "\\b(?:cannot|can't|unable to) breathe\\b"
+    - "\\b(?:severe )?chest pain\\b"
+    - "\\b(?:unconscious|seizure|heavy bleeding|overdose)\\b"
+  self_harm:
+    - "\\b(?:kill|hurt|harm) (?:myself|me)\\b"
+    - "\\b(?:suicidal|suicide)\\b"
+  diagnosis:
+    - "\\b(?:diagnose me|do i have|what disease do i have)\\b"
+  individual_treatment:
+    - "\\b(?:what should i take|treat me|prescribe|replace my medicine)\\b"
+  dose:
+    - "\\b(?:what|which|give me|recommend)(?: is the)? (?:dose|dosage)\\b"
+candidate_patterns:
+  dose:
+    - "\\b\\d+(?:\\.\\d+)?\\s*(?:mg|g|ml|mcg|tablets?|capsules?)\\b"
+    - "\\b(?:once|twice|three times) (?:a|per) day\\b"
+  directive:
+    - "\\b(?:you should|you must|take|stop taking|increase|decrease)\\b"
+  personalized_diagnosis:
+    - "\\b(?:you have|you are suffering from|your diagnosis is)\\b"
+role_patterns:
+  treatment:
+    - "\\b(?:dosage|dose|treatment|panchakarma|medication|virechana|prescription|intake|avoid)\\b"
+  diagnosis:
+    - "\\b(?:diagnosis|diagnose|prognosis|condition (?:is|could be) (?:co)?related)\\b"

@@ -1,0 +1,55 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "HIGH",
+      "location": "Requirements Summary; Functional Requirements; Acceptance Criteria 14–19; Required QLoRA execution and application consumption",
+      "problem": "The design makes external-GPU QLoRA a required delivery stage, although the authoritative request leaves fine-tuning optional and the review brief requires it to be clearly optional. This adds an unavailable paid-compute dependency and conflicts with PENDING_EXTERNAL_GPU.",
+      "fix": "Make QLoRA and PeftLocalProvider a non-blocking optional Gate C. Keep status PENDING_EXTERNAL_GPU until the user elects the stage and supplies access; allow COMPLETED only with real hashed run artifacts, and never claim training or quality gains without that evidence."
+    },
+    {
+      "id": 2,
+      "severity": "HIGH",
+      "location": "Unsupported-output requirement; provider prompt/grounding; citation validation; Acceptance Criteria 5 and 11",
+      "problem": "The generated-answer validator checks citation syntax and paragraph coverage but never verifies that generated claims are supported by cited contexts. A hallucinated medical claim ending in a valid marker passes the stated checks.",
+      "fix": "Make the accepted MVP extractive-only, with every answer sentence tied to an allowed source span. Gate optional generative providers behind a fully specified sentence/claim support verifier with pinned model/revision, input construction, calibrated threshold, adversarial tests, and whole-candidate rejection followed by extractive or fixed-abstention fallback."
+    },
+    {
+      "id": 3,
+      "severity": "HIGH",
+      "location": "Index modes, retrieval, and readiness — normalized BM25 and bm25_only support gate",
+      "problem": "Normalizing each query's BM25 scores by its maximum makes the best positive match exactly 1.0, so it always passes the 0.75 fallback gate even when overlap is incidental. The advertised offline abstention is therefore ineffective.",
+      "fix": "Use raw BM25 only for ranking and gate support on a non-degenerate pinned lexical-coverage measure, minimum distinct informative-term overlap, and calibrated raw-score floor. Calibrate against answerable and adversarial unanswerable rows; do not activate BM25-only readiness with the placeholder threshold."
+    },
+    {
+      "id": 4,
+      "severity": "MEDIUM",
+      "location": "Dataset acquisition and provenance — version-specific loaders and strict handoff",
+      "problem": "The loaders refer to inspected category-like fields and authentication columns but omit exact header maps, schema hashes, and deterministic parsing/rejection rules for the real Confidence, Authentication Notes, and Auth_Score fields.",
+      "fix": "Put the exact verified headers and canonical field maps for all three pinned CSVs in configs/datasets.yaml, define which authentication/confidence field controls each rule and its threshold, commit observed-header hashes/fixtures, and fail on missing or renamed expected columns."
+    },
+    {
+      "id": 5,
+      "severity": "MEDIUM",
+      "location": "Dataset table and kaggle.api.dataset_download_files acquisition flow",
+      "problem": "The design labels datasets owner/slug/version but does not specify a client call or postcondition that fetches that exact historical version. A slug-only current-version download can race an update, and recording its hash does not prove the configured version was fetched.",
+      "fix": "Pin the Kaggle client, use its official explicit dataset-version parameter/endpoint, require metadata before and after download to match the configured version, and verify a committed archive hash after approved inspection. Strict mode may use only that hash-valid cached archive as fallback."
+    },
+    {
+      "id": 6,
+      "severity": "MEDIUM",
+      "location": "Requirements Summary deadline MVP; Acceptance Criteria 1–19; handoff and Lightning sections",
+      "problem": "The design says the realistic deadline MVP is PDF-only RAG but gives no separate completion gate from the multi-dataset, hybrid retrieval, provider, Swift, packaging, and GPU work. The schedule statement is not actionable.",
+      "fix": "Assign every criterion to Gate A deadline MVP, Gate B rebuild completion, or optional Gate C QLoRA. Make Gate A PDF/BM25 extractive RAG, safety, API, local configuration, and backend tests; put Kaggle/full retrieval/provider/Swift/bundle work in Gate B and report gates independently."
+    },
+    {
+      "id": 7,
+      "severity": "NIT",
+      "location": "Files and immutable configuration; Kiro HTTP validation; .env.example",
+      "problem": "KiroOpenAIProvider requires KIRO_CONTEXT_WINDOW_TOKENS, but the environment template contract/current template lists only key, base URL, and model.",
+      "fix": "Add a blank documented KIRO_CONTEXT_WINDOW_TOKENS entry to .env.example while keeping all real dotenv/key/Kaggle/raw/model/adapter/checkpoint artifacts ignored and using only non-secret test sentinels."
+    }
+  ],
+  "reviewDoc": "/projects/sandbox/AcharyaGPT/.agents/tasks/acharyagpt-rag-rebuild/design-review.md"
+}

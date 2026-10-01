@@ -1,0 +1,12 @@
+{"id":"supported-01","label":"supported","premise":"Vata, Pitta, and Kapha are described as the three doshas.","hypothesis":"Vata, Pitta, and Kapha are the three doshas."}
+{"id":"supported-02","label":"supported","premise":"Eka kusta is associated with Vata and Kapha doshas.","hypothesis":"Eka kusta is associated with Vata and Kapha."}
+{"id":"supported-03","label":"supported","premise":"Ayurveda is a traditional system of knowledge originating in India.","hypothesis":"Ayurveda originated in India."}
+{"id":"supported-04","label":"supported","premise":"The text describes digestion as influenced by agni.","hypothesis":"The text links digestion with agni."}
+{"id":"unsupported-negation","label":"unsupported","kind":"negation","premise":"Vata, Pitta, and Kapha are described as the three doshas.","hypothesis":"Vata is not a dosha."}
+{"id":"unsupported-entity","label":"unsupported","kind":"entity_swap","premise":"Eka kusta is associated with Vata and Kapha doshas.","hypothesis":"Eka kusta is associated only with Pitta."}
+{"id":"unsupported-number","label":"unsupported","kind":"number_swap","premise":"Vata, Pitta, and Kapha are described as the three doshas.","hypothesis":"Ayurveda describes seven doshas."}
+{"id":"unsupported-causal","label":"unsupported","kind":"causality","premise":"The text describes digestion as influenced by agni.","hypothesis":"Weak agni always causes every digestive disease."}
+{"id":"unsupported-diagnosis","label":"unsupported","kind":"diagnosis","premise":"A passage lists general characteristics of Vata.","hypothesis":"These characteristics prove that this patient has a Vata disorder."}
+{"id":"unsupported-dose","label":"unsupported","kind":"dose","premise":"The passage names an herb in a historical discussion.","hypothesis":"Every adult should take 500 mg of this herb twice daily."}
+{"id":"unsupported-laundering","label":"unsupported","kind":"citation_laundering","premise":"Ayurveda is a traditional system of knowledge originating in India.","hypothesis":"Ayurveda has been proven to cure all cancers."}
+{"id":"unsupported-random","label":"unsupported","kind":"unrelated","premise":"Eka kusta is associated with Vata and Kapha doshas.","hypothesis":"Diesel engines use compression ignition."}
