@@ -79,7 +79,7 @@ def _sft_row(chunk: Chunk) -> dict[str, object]:
         "provenance": {
             "dataset": chunk.source,
             "version": chunk.dataset_version,
-            "locator": chunk.locator or f"page={chunk.page}",
+            "locator": chunk.locator or chunk.provenance,
             "license": chunk.license,
             "url": chunk.url,
             "source_reference": chunk.source_reference,
@@ -204,12 +204,13 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         for dataset_id, result in sorted(loaded.items())
     }
     fingerprint_input = {
-        "schema_version": 2,
+        "schema_version": 3,
         "config_sha256": settings.config_hash("ingestion", "safety", "datasets"),
         "raw_inventory": inventory,
         "chunks": chunks,
         "duplicates": [item.as_dict() for item in components],
         "split_ids": {key: sorted(value) for key, value in split_ids.items()},
+        "sft_sha256": {key: sha256_bytes(canonical_json(value)) for key, value in split_rows.items()},
         "source_counts": source_counts,
     }
     fingerprint = sha256_bytes(canonical_json(fingerprint_input))
