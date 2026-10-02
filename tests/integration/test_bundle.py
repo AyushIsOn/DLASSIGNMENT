@@ -144,3 +144,27 @@ def test_archive_validation_enforces_expanded_size_limit(
     monkeypatch.setattr(bundle, "_MAX_EXPANDED_BYTES", 5)
     with pytest.raises(PreflightError, match="expanded-size"):
         bundle.validate_archive(archive)
+
+
+def test_runtime_activation_preserves_manifest_and_rejects_source_tampering(
+    workspace_factory: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from acharya.lightning import verify_bundle
+
+    root = workspace_factory()  # type: ignore[operator]
+    fingerprint = _completed_preparation(root)
+    monkeypatch.setattr(bundle, "_tracked_files", lambda _workspace: ["pyproject.toml"])
+    archive = tmp_path / "runtime.tar.zst"
+    bundle.create(root, fingerprint, archive)
+    extracted = tmp_path / "runtime"
+    _extract(archive, extracted)
+    (extracted / ".venv").mkdir()
+    (extracted / ".venv" / "installed.txt").write_text("runtime")
+    (extracted / "artifacts" / "gates").mkdir()
+    (extracted / "artifacts" / "gates" / "gate-c.json").write_text("{}")
+    assert bundle.activate(extracted)["activated"] is True
+    assert bundle.activate(extracted)["activated"] is True
+    verify_bundle(extracted)
+    (extracted / "pyproject.toml").write_text("tampered")
+    with pytest.raises(PreflightError, match="hash mismatch"):
+        bundle.activate(extracted)

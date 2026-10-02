@@ -204,7 +204,10 @@ class RAGService:
                 )
             generation = self.settings.rag["generation"]
             budget = PromptBudget(
-                context_window_tokens=int(generation["context_window_tokens"]),
+                context_window_tokens=min(
+                    int(generation["context_window_tokens"]),
+                    int(getattr(self.generative_provider, "context_window_tokens", 32768)),
+                ),
                 output_tokens=int(generation["output_tokens"]),
                 maximum_prompt_bytes=int(generation["maximum_prompt_bytes"]),
             )

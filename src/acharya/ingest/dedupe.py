@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import random
 import re
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 
 from acharya.ingest.normalize import Chunk
@@ -79,13 +81,35 @@ def deduplicate(
 
     normalized = [" ".join(_TOKEN.findall(item.text.casefold())) for item in ordered]
     chunk_shingles = [shingles(item.text, shingle_size) for item in ordered]
-    for left in range(len(ordered)):
-        for right in range(left + 1, len(ordered)):
-            if (
-                normalized[left] == normalized[right]
-                or jaccard(chunk_shingles[left], chunk_shingles[right]) >= threshold
-            ):
+    if not 0 < threshold <= 1:
+        raise ValueError("duplicate threshold must be in (0, 1]")
+    # Exact duplicates need no pairwise comparisons. Prefix filtering is lossless
+    # for Jaccard: qualifying sets must share a token in these global-order prefixes.
+    frequencies = Counter(token for values in chunk_shingles for token in values)
+    postings: dict[str, list[int]] = defaultdict(list)
+    exact_seen: dict[str, int] = {}
+    empty_seen: int | None = None
+    for right, values in enumerate(chunk_shingles):
+        if normalized[right] in exact_seen:
+            union(exact_seen[normalized[right]], right)
+            continue
+        exact_seen[normalized[right]] = right
+        if not values:
+            if empty_seen is not None:
+                union(empty_seen, right)
+            empty_seen = right
+            continue
+        tokens = sorted(values, key=lambda token: (frequencies[token], token))
+        prefix = tokens[:len(tokens) - math.ceil(threshold * len(tokens)) + 1]
+        candidates = {left for token in prefix for left in postings[token]}
+        for left in sorted(candidates):
+            other = chunk_shingles[left]
+            if min(len(values), len(other)) < threshold * max(len(values), len(other)):
+                continue
+            if jaccard(other, values) >= threshold:
                 union(left, right)
+        for token in prefix:
+            postings[token].append(right)
 
     groups: dict[int, list[int]] = {}
     for index in range(len(ordered)):
@@ -95,7 +119,7 @@ def deduplicate(
     for indexes in groups.values():
         members = tuple(sorted(ordered[index].chunk_id for index in indexes))
         winner_id = members[0]
-        winner = next(item for item in ordered if item.chunk_id == winner_id)
+        winner = ordered[indexes[0]]
         winners.append(winner)
         if len(members) > 1:
             texts = {normalized[index] for index in indexes}

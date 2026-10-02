@@ -61,7 +61,7 @@ def _jsonl(path: Path, rows: list[dict[str, object]]) -> None:
 
 
 def _split(chunk: Chunk) -> str:
-    bucket = int(sha256_bytes(chunk.chunk_id.encode())[:8], 16) % 10
+    bucket = int(sha256_bytes(chunk.provenance.encode())[:8], 16) % 10
     if bucket == 0:
         return "test"
     if bucket == 1:
@@ -123,7 +123,6 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
                 "version": int(spec["version"]),
                 "archive_sha256": acquisition.archive_sha256,
                 "members": acquisition.member_sha256,
-                "cache_used": acquisition.cache_used,
             }
         )
     policy = SafetyPolicy(settings.safety)

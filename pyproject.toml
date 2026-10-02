@@ -81,6 +81,8 @@ module = [
   "pypdf.*",
   "sentence_transformers",
   "sentence_transformers.*",
+  "torch",
+  "torch.*",
   "transformers",
   "transformers.*",
   "yaml.*",

@@ -5,11 +5,10 @@ from __future__ import annotations
 import json
 import os
 from datetime import UTC, datetime
-from typing import cast
 
 from acharya.config import Settings, canonical_json
 from acharya.ingest.download import AcquisitionError, acquire_dataset, blocker_record
-from training.prepare_sft import (  # type: ignore[import-untyped]
+from training.prepare_sft import (
     Preparation,
     prepare,
     verify_preparation,
@@ -93,4 +92,4 @@ def verify_handoff(settings: Settings, *, strict: bool) -> dict[str, object]:
         gate = json.loads(gate_path.read_text(encoding="utf-8"))
         if gate.get("status") == "BLOCKED_EXTERNAL_DATA":
             raise RuntimeError("Gate B is blocked by external data")
-    return cast(dict[str, object], verify_preparation(settings, strict=strict))
+    return verify_preparation(settings, strict=strict)

@@ -79,7 +79,7 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
         "qlora_sha256": profile.config_sha256,
         "preparation_fingerprint": pointer["fingerprint"],
         "train_sha256": sha256_file(processed / "train.jsonl"),
-        "max_steps": max_steps,
+
     }
     run_sha256 = sha256_bytes(canonical_json(run_input))
 
@@ -126,11 +126,15 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
     from peft import get_peft_model
 
     model = get_peft_model(model, peft_config)
+    model.config.use_cache = False
+    model.peft_config["default"].base_model_name_or_path = profile.value["base_model"]["repository"]
+    model.peft_config["default"].revision = LOCKED_REVISION
 
     def tokenize(row: dict[str, Any]) -> dict[str, Any]:
         text = tokenizer.apply_chat_template(row["messages"], tokenize=False)
         encoded = tokenizer(
             text,
+            add_special_tokens=False,
             truncation=True,
             max_length=int(profile.training["maximum_sequence_tokens"]),
         )

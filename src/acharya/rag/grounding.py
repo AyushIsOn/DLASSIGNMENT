@@ -105,7 +105,7 @@ class TransformersClaimScorer:
             raise RuntimeError("support verifier files do not match the lock")
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-        self.tokenizer = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call]
+        self.tokenizer = AutoTokenizer.from_pretrained(
             str(model.path), local_files_only=True, trust_remote_code=False
         )
         self.model = AutoModelForSequenceClassification.from_pretrained(

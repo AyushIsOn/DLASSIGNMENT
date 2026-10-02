@@ -27,22 +27,24 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
     profile = QLoRAProfile.load(workspace)
     settings = Settings.load(workspace)
     pointer = json.loads(
-        (workspace / "artifacts" / "state" / "active_preparation.json").read_text(
-            encoding="utf-8"
-        )
+        (workspace / "artifacts" / "state" / "active_preparation.json").read_text(encoding="utf-8")
     )
     processed = Path(str(pointer["processed_path"]))
     if not processed.is_absolute():
         processed = workspace / processed
     processed = processed.resolve()
-    rows = (_load_rows(processed / "validation.jsonl") + _load_rows(processed / "test.jsonl"))[
-        :limit
-    ]
+    if limit < 2:
+        raise PreflightError("evaluation limit must include both held-out splits")
+    rows = (
+        _load_rows(processed / "validation.jsonl")[: (limit + 1) // 2]
+        + _load_rows(processed / "test.jsonl")[: limit // 2]
+    )
     if not rows:
         raise PreflightError("held-out evaluation rows are missing")
-    if not (adapter / "adapter_config.json").is_file() or not (
-        adapter / "adapter_model.safetensors"
-    ).is_file():
+    if (
+        not (adapter / "adapter_config.json").is_file()
+        or not (adapter / "adapter_model.safetensors").is_file()
+    ):
         raise PreflightError("adapter export is incomplete")
 
     import torch
@@ -98,8 +100,6 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
         adversarial_records.append(record)
 
     unsafe = held_out_unsafe + adversarial_unsafe
-    if unsafe:
-        raise PreflightError("adapter evaluation produced unsafe candidates")
     report: dict[str, object] = {
         "schema_version": 2,
         "base_revision": LOCKED_REVISION,
@@ -118,6 +118,8 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(canonical_json(report) + b"\n")
+    if unsafe:
+        raise PreflightError("adapter evaluation produced unsafe candidates; see evaluation report")
     return report
 
 

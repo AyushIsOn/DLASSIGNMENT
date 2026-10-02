@@ -53,7 +53,8 @@ struct CitationView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("\(citation.source) · page \(citation.page)").font(.caption.bold())
+            Text(citation.page > 0 ? "\(citation.source) · page \(citation.page)" : citation.source)
+                .font(.caption.bold())
             Text(citation.text).font(.caption).foregroundStyle(.secondary)
         }
         .padding(8)
