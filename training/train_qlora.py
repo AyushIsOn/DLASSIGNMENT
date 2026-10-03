@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from acharya.config import canonical_json, sha256_bytes, sha256_file
 from acharya.lightning import (
@@ -139,7 +139,7 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
             max_length=int(profile.training["maximum_sequence_tokens"]),
         )
         encoded["labels"] = list(encoded["input_ids"])
-        return encoded
+        return cast(dict[str, Any], encoded)
 
     dataset = Dataset.from_list(train_rows).map(tokenize, remove_columns=list(train_rows[0]))
     output.mkdir(parents=True, exist_ok=True)

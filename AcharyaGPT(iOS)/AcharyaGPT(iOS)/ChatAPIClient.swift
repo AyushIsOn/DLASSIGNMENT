@@ -88,7 +88,7 @@ struct ChatAPIClient: ChatAPIClientProtocol {
         let body = try? decoder.decode(APIErrorEnvelope.self, from: data).error
         let code = body?.code ?? "http_\(status)"
         let message = body?.message ?? "The server returned HTTP \(status)."
-        switch status {
+        return switch status {
         case 422: .invalidRequest(message)
         case 429: .rateLimited(message)
         case 502: .upstreamFailure(message)

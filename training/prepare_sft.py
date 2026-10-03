@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import pyarrow as pa  # type: ignore[import-untyped]
-import pyarrow.parquet as pq  # type: ignore[import-untyped]
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from acharya.config import Settings, canonical_json, sha256_bytes, sha256_file
 from acharya.ingest.dedupe import DuplicateComponent, deduplicate
@@ -210,7 +210,9 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         "chunks": chunks,
         "duplicates": [item.as_dict() for item in components],
         "split_ids": {key: sorted(value) for key, value in split_ids.items()},
-        "sft_sha256": {key: sha256_bytes(canonical_json(value)) for key, value in split_rows.items()},
+        "sft_sha256": {
+            key: sha256_bytes(canonical_json(value)) for key, value in split_rows.items()
+        },
         "source_counts": source_counts,
     }
     fingerprint = sha256_bytes(canonical_json(fingerprint_input))
