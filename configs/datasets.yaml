@@ -1,4 +1,6 @@
 version: 2
+quarantined_sources:
+  aliainaanraza/ayurveda-healthcare-dataset/2: Repeated synthetic variants and mismatched disease/symptom profiles; downloaded for audit only
 sft_sources:
   - akashkumarpr/ayurvedic-knowledge-dataset/1
   - bundled_pdf
@@ -26,8 +28,8 @@ kaggle:
       slug: medquad
       version: 1
       url: https://www.kaggle.com/datasets/gpreda/medquad
-      license: Apache 2.0
-      required_credit: MedQuAD dataset contributors
+      license: CC BY 4.0 (upstream); Kaggle mirror labels Apache 2.0
+      required_credit: "Asma Ben Abacha and Dina Demner-Fushman; A Question-Entailment Approach to Question Answering, BMC Bioinformatics (2019); Kaggle mirror by Gabriel Preda"
       trust_tier: general_medical_secondary
       expected_rows: 16412
       archive_sha256: 8d09eeb3ab4a51c3c10adc67e2523756f2e98a8c3b4960e2e8d0b158f24ff037
@@ -87,7 +89,7 @@ kaggle:
       url: https://www.kaggle.com/datasets/aliainaanraza/ayurveda-healthcare-dataset
       license: CC BY 4.0
       required_credit: Ayurveda Healthcare Dataset by Ali Ainaan Raza
-      trust_tier: ayurveda_authenticated_secondary
+      trust_tier: ayurveda_secondary_unverified
       expected_rows: 10000
       archive_sha256: 524104f8b96802faf977023572468db0ee873d62f1ab45e8d6eeefb1e543d177
       members:
@@ -157,13 +159,14 @@ supplemental:
       content_min: 40
 text_sources:
   official_ayush_principles/1:
-    relative_path: data/raw/official_ayush/1/ayusoft-principles.txt
+    relative_path: data/curated/ayush-principles.txt
     url: https://ayusoft.ayush.gov.in/principles-of-ayurveda/
-    title: Official AYUSH educational notes on Ayurvedic principles
+    title: Project-authored paraphrase of AYUSH educational pages
     version: 1
-    license: government educational webpage
+    license: Project-authored paraphrase under repository MIT; source-page rights retained
     required_credit: "Ayusoft, Ministry of AYUSH; Directorate of AYUSH, Government of NCT Delhi"
-    trust_tier: official_educational
+    trust_tier: project_paraphrase_of_official_education
+    role_hint: educational
     sha256: 8f224a751ef4eb35aceb3b4fc75d0c473793a463c2e6b88bd362213c10585ef1
     source_reference: Ayusoft and Delhi AYUSH educational pages on Ayurvedic principles
     minimum_characters: 120
@@ -175,6 +178,7 @@ text_sources:
   public_domain_sushruta/1:
     relative_path: data/raw/public_domain__sushruta/1/sushruta-vol1.txt
     url: https://archive.org/details/englishtranslati00susruoft
+    download_url: https://archive.org/download/englishtranslati00susruoft/englishtranslati00susruoft_djvu.txt
     title: Sushruta Samhita, Volume 1 (1907 English translation)
     version: 1
     license: public domain

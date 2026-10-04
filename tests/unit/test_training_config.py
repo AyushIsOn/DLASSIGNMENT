@@ -51,7 +51,7 @@ def test_training_masks_prompt_tokens() -> None:
         def __call__(
             self, text: str, *, add_special_tokens: bool, **_: object
         ) -> dict[str, list[int]]:
-            return {"input_ids": list(range(len(text.split())))}
+            return {"input_ids": [ord(char) for char in text]}
 
     result = _tokenize_chat_row(
         {
@@ -61,7 +61,27 @@ def test_training_masks_prompt_tokens() -> None:
             ]
         },
         FakeTokenizer(),
-        64,
+        128,
     )
     assert result["labels"][0] == -100
     assert any(label != -100 for label in result["labels"])
+    with pytest.raises(PreflightError, match="exceeds maximum"):
+        _tokenize_chat_row({"messages": [
+            {"role": "user", "content": "question"},
+            {"role": "assistant", "content": "long answer"},
+        ]}, FakeTokenizer(), 20)
+
+
+def test_training_rejects_incompatible_prefix() -> None:
+    class IncompatibleTokenizer:
+        def apply_chat_template(self, *_: object, **kwargs: object) -> str:
+            return "different" if kwargs.get("add_generation_prompt") else "answer"
+
+        def __call__(self, text: str, **_: object) -> dict[str, list[int]]:
+            return {"input_ids": [ord(char) for char in text]}
+
+    with pytest.raises(PreflightError, match="prefix does not match"):
+        _tokenize_chat_row({"messages": [
+            {"role": "user", "content": "question"},
+            {"role": "assistant", "content": "answer"},
+        ]}, IncompatibleTokenizer(), 128)

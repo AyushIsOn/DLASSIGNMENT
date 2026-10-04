@@ -102,6 +102,13 @@ def test_bundle_is_deterministic_and_validates_clean_extraction(
     _extract(first, extracted)
     result = bundle.validate(extracted)
     assert result["valid"] is True
+    from acharya.config import Settings
+    from acharya.preparation import verify_handoff
+
+    settings = Settings.load(root)
+    from dataclasses import replace
+
+    assert verify_handoff(replace(settings, workspace=extracted), strict=True)["verified"]
     paths = {path.relative_to(extracted).as_posix() for path in extracted.rglob("*")}
     assert not any(
         ".env" in path or "raw/" in path or path.endswith(".safetensors") for path in paths

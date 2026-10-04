@@ -128,7 +128,7 @@ def load_text_source(path: Path, dataset_id: str, spec: dict[str, Any]) -> Loade
                 str(spec["license"]),
                 str(spec["url"]),
                 str(spec["trust_tier"]),
-                "historical",
+                str(spec.get("role_hint", "historical")),
                 str(spec.get("source_reference", spec["title"])),
             )
         )
@@ -236,7 +236,7 @@ def _healthcare(mapped: dict[str, str], admission: dict[str, Any]) -> tuple[str,
 def _ayurgenix(mapped: dict[str, str], admission: dict[str, Any]) -> tuple[str, str, str]:
     """Project the Kaggle profile table into non-prescriptive educational records.
 
-    Formulations, medicines and medical interventions are deliberately excluded. The
+    Treatment, diet, yoga, prevention and prognosis recommendations are excluded. The
     source is a secondary dataset and remains labelled as such in provenance.
     """
     disease = _required(mapped["disease"], "missing_disease")
@@ -246,10 +246,6 @@ def _ayurgenix(mapped: dict[str, str], admission: dict[str, Any]) -> tuple[str, 
         ("Symptoms", "symptoms"),
         ("Doshas", "doshas"),
         ("Constitution/Prakriti", "constitution"),
-        ("Diet and lifestyle", "diet_lifestyle"),
-        ("Yoga and physical therapy", "yoga"),
-        ("Prevention", "prevention"),
-        ("Prognosis", "prognosis"),
     )
     content = ". ".join(
         f"{label}: {normalize_text(mapped[name])}"
@@ -260,7 +256,7 @@ def _ayurgenix(mapped: dict[str, str], admission: dict[str, Any]) -> tuple[str, 
         raise ValueError("missing_substantive_content")
     return (
         f"What are the symptoms and Ayurvedic profile of {disease}?",
-        f"Disease: {disease}. {content}",
+        f"Community dataset profile (not a clinical assessment). Disease: {disease}. {content}",
         normalize_text(mapped.get("source_reference", "Kaggle AyurGenixAI dataset")),
     )
 

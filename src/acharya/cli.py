@@ -185,7 +185,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "build-corpus":
         output: object = build_corpus(settings).__dict__
     elif args.command == "build-index":
-        output = build_index(settings).as_dict()
+        built = build_index(settings)
+        output = {"fingerprint": built.fingerprint, "corpus_fingerprint": built.corpus_fingerprint,
+                  "mode": built.mode, "document_count": len(built.documents)}
     elif args.command == "calibrate":
         output = calibrate(settings).as_dict()
     elif args.command == "calibrate-support":
@@ -195,9 +197,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.command == "verify-preparation":
         output = verify_handoff(settings, strict=bool(args.strict))
     elif args.command == "index":
-        output = build_index(
+        built = build_index(
             settings, args.retrieval_mode, allow_bm25_fallback=bool(args.allow_bm25_fallback)
-        ).as_dict()
+        )
+        output = {"fingerprint": built.fingerprint, "corpus_fingerprint": built.corpus_fingerprint,
+                  "mode": built.mode, "document_count": len(built.documents)}
     elif args.command == "evaluate":
         index_value = __import__("acharya.rag.index", fromlist=["load_index"]).load_index(
             settings, args.retrieval_mode

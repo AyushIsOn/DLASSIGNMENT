@@ -91,3 +91,5 @@ def test_merged_preparation_is_reproducible_and_reconciled(workspace_factory: ob
         for counts in first.source_counts.values()
     )
     assert verify_preparation(settings, strict=True)["verified"] is True
+    healthcare = first.source_counts["aliainaanraza/ayurveda-healthcare-dataset/2"]
+    assert healthcare["retrieval_chunks"] == 0

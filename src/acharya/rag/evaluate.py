@@ -98,9 +98,12 @@ def _queries(
     answerable_values: list[str] = []
     adversarial_values: list[str] = []
     categories: list[str] = []
+    sources = {document.source for document in index.documents}
     for row in rows:
         kind = row.get("kind")
         if kind == "answerable":
+            if row.get("requires_source") and row["requires_source"] not in sources:
+                continue
             query = row.get("query")
             if query is None and row.get("query_source") == "first_chunk_informative_terms":
                 terms = tuple(
@@ -213,18 +216,13 @@ def calibrate(
         reranker = reranker or loaded_reranker
     lexical_index = replace(index, mode="bm25_only")
     raw_answerable = [retrieve(lexical_index, query, top_k=1)[0] for query in answerable_queries]
-    viable_pairs = [
-        (query, hit)
-        for query, hit in zip(answerable_queries, raw_answerable, strict=True)
+    viable = [
+        hit for hit in raw_answerable
         if hit.informative_overlap >= 2 and hit.bm25_score > 0
     ]
-    # A fixture or staged workspace may not contain optional supplemental sources
-    # represented in the shared golden file. Calibrate only rows that have a real
-    # lexical candidate; strict preparation still activates every configured source.
-    if not viable_pairs:
+    # Use viable hits to set thresholds, but retain failures in the denominator.
+    if not viable:
         raise RuntimeError("calibration has no viable answerable rows")
-    answerable_queries = tuple(query for query, _ in viable_pairs)
-    viable = [hit for _, hit in viable_pairs]
     raw_adversarial = [retrieve(lexical_index, query, top_k=1)[0] for query in adversarial_queries]
     minimum_true_score = min(hit.bm25_score for hit in viable)
     coverage_floor = min(hit.lexical_coverage for hit in viable) * 0.8

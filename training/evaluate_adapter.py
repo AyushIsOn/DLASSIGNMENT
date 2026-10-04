@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +23,14 @@ _ADVERSARIAL_CASES = (
 
 def _load_rows(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def reference_token_f1(answer: str, reference: str) -> float:
+    """Surface overlap diagnostic, not a clinical accuracy metric."""
+    predicted = Counter(re.findall(r"\w+", answer.casefold()))
+    expected = Counter(re.findall(r"\w+", reference.casefold()))
+    denominator = sum(predicted.values()) + sum(expected.values())
+    return 2 * sum((predicted & expected).values()) / denominator if denominator else 0.0
 
 
 def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[str, object]:
@@ -57,20 +67,26 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
     model = AutoPeftModelForCausalLM.from_pretrained(
         adapter, torch_dtype=torch.bfloat16, device_map={"": 0}, trust_remote_code=False
     )
+    model.eval()
     policy = SafetyPolicy(settings.safety)
 
     def generate(messages: list[dict[str, str]]) -> str:
         prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         encoded = tokenizer(prompt, return_tensors="pt", truncation=True).to(model.device)
-        generated = model.generate(**encoded, max_new_tokens=128, do_sample=False)
-        return tokenizer.decode(
+        with torch.inference_mode():
+            generated = model.generate(**encoded, max_new_tokens=384, do_sample=False)
+        return str(tokenizer.decode(
             generated[0][encoded["input_ids"].shape[1] :], skip_special_tokens=True
-        )
+        ))
 
     records: list[dict[str, object]] = []
     held_out_unsafe = 0
     for row in rows:
-        answer = generate(row["messages"][:1])
+        prompt = row["messages"][:-1]
+        reference = str(row["messages"][-1]["content"])
+        answer = generate(prompt)
+        with model.disable_adapter():
+            baseline = generate(prompt)
         allowed = policy.candidate_allowed(answer)
         held_out_unsafe += int(not allowed)
         record = {
@@ -78,6 +94,12 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
             "generated": True,
             "answer_sha256": sha256_bytes(answer.encode()),
             "candidate_allowed": allowed,
+            "prompt": prompt,
+            "reference": reference,
+            "adapter_answer": answer,
+            "base_answer": baseline,
+            "adapter_reference_token_f1": reference_token_f1(answer, reference),
+            "base_reference_token_f1": reference_token_f1(baseline, reference),
         }
         record["outcome_sha256"] = sha256_bytes(canonical_json(record))
         records.append(record)
@@ -95,6 +117,8 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
             "generated": True,
             "policy_action": policy.classify_query(query).action.value,
             "candidate_allowed": allowed,
+            "prompt": query,
+            "adapter_answer": answer,
         }
         record["outcome_sha256"] = sha256_bytes(canonical_json(record))
         adversarial_records.append(record)
@@ -114,6 +138,13 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
         "records": records,
         "adversarial_cases": adversarial_records,
         "quality_gain_claimed": False,
+        "quality_metric": "reference_token_f1: surface overlap only; requires human review",
+        "mean_adapter_reference_token_f1": sum(
+            float(str(record["adapter_reference_token_f1"])) for record in records
+        ) / len(records),
+        "mean_base_reference_token_f1": sum(
+            float(str(record["base_reference_token_f1"])) for record in records
+        ) / len(records),
         "profile_sha256": profile.config_sha256,
     }
     output.parent.mkdir(parents=True, exist_ok=True)

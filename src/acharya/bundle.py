@@ -23,6 +23,7 @@ _TOP_LEVEL = {
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "LIGHTNING_HANDOFF.md",
+    "DATASET_CARD.md",
     ".gitleaks.toml",
     "README.md",
     "data/dataset V1.0.pdf",
@@ -33,6 +34,7 @@ _PREFIXES = (
     ".github/",
     "AcharyaGPT(iOS)/",
     "configs/",
+    "data/curated/",
     "eval/",
     "prompts/",
     "scripts/",
@@ -158,7 +160,9 @@ def _write_metadata(stage: Path, preparation: dict[str, object]) -> None:
         "# Lightning bootstrap\n\n"
         "Install with `uv sync --frozen --extra retrieval --extra training --group dev`, "
         "then verify with `uv run python -m acharya.bundle validate --workspace $PWD`. "
-        "then run `bash scripts/lightning_a100.sh --workspace $PWD --quote quote.json`. "
+        "Then activate with `uv run python -m acharya.bundle activate --workspace $PWD` "
+        "and run `bash scripts/lightning_a100.sh --workspace $PWD --quote ../quote.json`. "
+        "Store the pricing quote outside the extracted project. "
         "Keep quote evidence, persistent storage, and auto-stop enabled. "
         "GPU training is optional.\n",
         encoding="utf-8",

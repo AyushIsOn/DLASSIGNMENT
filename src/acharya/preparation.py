@@ -6,8 +6,9 @@ import json
 import os
 from datetime import UTC, datetime
 
-from acharya.config import Settings, canonical_json, sha256_file
+from acharya.config import Settings, canonical_json
 from acharya.ingest.download import AcquisitionError, acquire_dataset, blocker_record
+from acharya.ingest.supplemental import acquire_supplemental
 from training.prepare_sft import (
     Preparation,
     prepare,
@@ -27,38 +28,15 @@ def prepare_handoff(settings: Settings, *, strict: bool) -> Preparation:
     acquisitions = []
     configured = settings.datasets["kaggle"]
     if strict:
-        for dataset_id, spec in settings.datasets.get("supplemental", {}).items():
-            source = settings.workspace / str(spec["relative_path"])
-            expected = str(spec["members"][spec["primary_member"]])
-            if not source.is_file() or sha256_file(source) != expected:
-                error = RuntimeError(f"supplemental source unavailable:{dataset_id}")
-                _write_gate(
-                    settings,
-                    {
-                        "schema_version": 1,
-                        "gate": "B",
-                        "status": "BLOCKED_EXTERNAL_DATA",
-                        "component": "supplemental_dataset",
-                        "evidence": {"message": str(error), "redacted": True},
-                    },
-                )
-                raise error
-        for dataset_id, spec in settings.datasets.get("text_sources", {}).items():
-            source = settings.workspace / str(spec["relative_path"])
-            expected = str(spec["sha256"])
-            if not source.is_file() or sha256_file(source) != expected:
-                error = RuntimeError(f"text source unavailable:{dataset_id}")
-                _write_gate(
-                    settings,
-                    {
-                        "schema_version": 1,
-                        "gate": "B",
-                        "status": "BLOCKED_EXTERNAL_DATA",
-                        "component": "text_source",
-                        "evidence": {"message": str(error), "redacted": True},
-                    },
-                )
-                raise error
+        try:
+            acquire_supplemental(settings)
+        except Exception as error:
+            _write_gate(settings, {
+                "schema_version": 1, "gate": "B", "status": "BLOCKED_EXTERNAL_DATA",
+                "component": "supplemental_acquisition",
+                "evidence": {"failure_category": type(error).__name__, "redacted": True},
+            })
+            raise
     blockers: list[tuple[AcquisitionError, dict[str, object]]] = []
     for dataset_id, spec in configured["datasets"].items():
         try:
@@ -120,7 +98,15 @@ def prepare_handoff(settings: Settings, *, strict: bool) -> Preparation:
 def verify_handoff(settings: Settings, *, strict: bool) -> dict[str, object]:
     gate_path = settings.workspace / "artifacts" / "gates" / "gate-b.json"
     if strict and not gate_path.is_file():
-        raise RuntimeError("Gate B evidence is missing")
+        from acharya.bundle import validate
+
+        # A transfer bundle carries hashed preparation evidence, without local
+        # acquisition state. Verify that evidence before accepting its pointer.
+        evidence = validate(settings.workspace, runtime=True)
+        result = verify_preparation(settings, strict=True)
+        if evidence["fingerprint"] != result["fingerprint"]:
+            raise RuntimeError("bundle/preparation fingerprint mismatch")
+        return result
     if gate_path.is_file():
         gate = json.loads(gate_path.read_text(encoding="utf-8"))
         if gate.get("status") == "BLOCKED_EXTERNAL_DATA":

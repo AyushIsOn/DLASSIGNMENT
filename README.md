@@ -25,19 +25,23 @@ For the prepared archive and exact Lightning steps, see [LIGHTNING_HANDOFF.md](L
 
 The strict Gate B preparation requires these exact versions:
 
-- [MedQuAD `gpreda/medquad/1`](https://www.kaggle.com/datasets/gpreda/medquad), Apache 2.0 as recorded in `configs/datasets.yaml` and the selected Kaggle version metadata.
+- [MedQuAD `gpreda/medquad/1`](https://www.kaggle.com/datasets/gpreda/medquad), upstream CC BY 4.0; the mirror’s Apache 2.0 label differs. See `THIRD_PARTY_NOTICES.md`.
 - [Ayurvedic Knowledge Dataset `akashkumarpr/ayurvedic-knowledge-dataset/1`](https://www.kaggle.com/datasets/akashkumarpr/ayurvedic-knowledge-dataset), license and required credit recorded in configuration and output attribution.
-- [Ayurveda Healthcare Dataset `aliainaanraza/ayurveda-healthcare-dataset/2`](https://www.kaggle.com/datasets/aliainaanraza/ayurveda-healthcare-dataset), license and required credit recorded in configuration and output attribution.
+- [Ayurveda Healthcare Dataset `aliainaanraza/ayurveda-healthcare-dataset/2`](https://www.kaggle.com/datasets/aliainaanraza/ayurveda-healthcare-dataset), downloaded for audit but quarantined from retrieval and SFT after quality inspection.
+- [AyurGenixAI `kagglekirti123/ayurgenixai-ayurvedic-dataset/1`](https://www.kaggle.com/datasets/kagglekirti123/ayurgenixai-ayurvedic-dataset), CC BY 4.0.
+- [Sushruta Samhita (1907)](https://archive.org/details/englishtranslati00susruoft), public-domain historical OCR for retrieval.
+- Four project-authored paraphrases of AYUSH educational pages, committed under `data/curated/`.
+
+See [DATASET_CARD.md](DATASET_CARD.md) for measured counts, sample structure, filtering and limitations. Public supplemental sources are downloaded and hash-verified during strict preparation; original Kaggle sources use the authenticated CLI or verified cache.
 
 The acquisition client is pinned to the [official Kaggle CLI 2.2.4 release](https://github.com/Kaggle/kaggle-cli/releases/tag/v2.2.4) and uses its [version-aware dataset request](https://github.com/Kaggle/kaggle-cli/blob/v2.2.4/src/kaggle/api/kaggle_api_extended.py). Exact archive/member hashes, ordered schemas, row expectations, size limits, score admission rules, and attribution are enforced. `rcratos/ayurveda-texts-english/1` is explicitly prohibited because its rights are unclear. Deterministic admission is not proof of medical truth.
 
 ```bash
 uv run acharya --workspace "$PWD" prepare-handoff --strict
-uv run acharya --workspace "$PWD" prepare-handoff --strict
 uv run acharya --workspace "$PWD" verify-preparation --strict
 ```
 
-If authentication/network access and the exact hash-valid cache are both unavailable, Gate B remains `BLOCKED_EXTERNAL_DATA`. The PDF is never substituted for a successful three-dataset preparation.
+If authentication/network access and the exact hash-valid cache are both unavailable, Gate B remains `BLOCKED_EXTERNAL_DATA`. The PDF is never substituted for a successful strict merged preparation.
 
 ## Retrieval, serving, and optional providers
 
@@ -109,7 +113,7 @@ The external workflow requires exactly one A100 with at least 39 GiB VRAM, compl
 
 ```bash
 export ACHARYA_PERSISTENT_STORAGE=1 ACHARYA_AUTO_STOP=1
-bash scripts/lightning_a100.sh --workspace "$PWD" --quote "$PWD/quote.json" --train-steps 100
+bash scripts/lightning_a100.sh --workspace "$PWD" --quote ../quote.json --train-steps 100
 ```
 
 The script verifies integrity, acquires and hashes the model, runs a 5-step GPU smoke and real 100-optimizer-step profile, resumes only hash-bound checkpoints, evaluates held-out/adversarial/safety rows, atomically exports the adapter, optionally merges bf16 with `--merge`, and runs support-gated PEFT RAG smoke. Gate C becomes `COMPLETED` only when checkpoint state, adapter config/weights/tokenizer/base revision, manifests/file hashes, evaluation, and PEFT serving evidence all validate. Scripts, CPU checks, and fake runners leave it `PENDING_EXTERNAL_GPU`; no tuned-serving or quality-gain claim is made.

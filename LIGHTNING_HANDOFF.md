@@ -6,18 +6,18 @@ The archive contains source, locked dependencies, the bundled PDF, processed dat
 training/validation/test JSONL, attribution, and integrity manifests. Raw Kaggle
 archives and credentials stay on the preparation machine. No Kaggle token is
 needed to use this archive. The active prepared corpus fingerprint is
-`3f2ae80f27d0cbf11a6c64df285e807cd4018213ffa5ed9964ae8561a775e9dd`; it contains
-28,169 retrieval chunks and 1,456 complete SFT examples (1,161 train, 146
-validation, 149 test). GPU training has not been executed locally.
+`ea1cc9d86476329512b50bdb865aeb48921ff6f81d149c4de0b810115fa81cc8`; it contains
+28,092 retrieval chunks and 1,454 complete SFT examples (1,174 train, 136
+validation, 144 test). GPU training has not been executed locally.
 
-The merge includes the repository PDF, 1,000 Ayurvedic knowledge records, 446
-AyurGenixAI Ayurveda profiles, 77 deduplicated healthcare profiles for retrieval,
-12,241 accepted MedQuAD records for retrieval, four official AYUSH educational
-passages, and 2,582 public-domain Sushruta passages. MedQuAD and the healthcare
-table are deliberately retrieval-only; prescription, medicine, formulation, and
-medical-intervention fields from the Kaggle profile table are excluded from the
-prepared text. Review the generated `DATA_CARD.md` and `attribution.json` before
-redistribution.
+The active merge includes the repository PDF, 1,000 Ayurvedic Knowledge records,
+446 AyurGenixAI profiles, 12,241 accepted MedQuAD records, four project-authored
+paraphrases of AYUSH educational pages, and 2,582 historical Sushruta paragraphs.
+The 10,000-row Healthcare table is downloaded for audit and excluded from both
+retrieval and training because of repetitive and mismatched profiles. SFT contains
+1,000 Knowledge, 446 AyurGenixAI and eight complete PDF answers. Treatment fields
+are excluded from the community profiles; see [DATASET_CARD.md](DATASET_CARD.md)
+for exact selections, examples, and limitations.
 
 ## Upload and install
 
@@ -85,7 +85,10 @@ This performs a 5-step smoke run, a 100-step profile, held-out/adversarial check
 adapter export, and support-verified RAG serving smoke. A failed quality/support
 check is a failed check; it must not be bypassed to label training complete.
 100 steps is a pilot, not a demonstrated quality improvement. The trainer masks
-the user/provenance prefix from loss and evaluates the held-out validation split.
+the system/user prefix from loss, pads labels with -100, and evaluates the held-out
+validation split. Overlong answers cause an error rather than silent truncation.
+Evaluation saves readable adapter/base answers and reference-overlap diagnostics
+for human review; these metrics do not measure clinical accuracy.
 Use a larger `--train-steps` only within your measured budget. Compatible checkpoints resume
 when the step target is extended; data/config changes invalidate them.
 
@@ -112,6 +115,16 @@ Open `AcharyaGPT(iOS)/AcharyaGPT(iOS).xcodeproj` in full Xcode. Debug defaults t
 No server has been deployed by this handoff. Run the shared scheme's tests on an
 available iOS 17+ simulator. The preparation Mac lacked full Xcode, so only project
 structure was validated.
+
+## Local verification
+
+80 Python tests, Ruff, backend mypy, actual-Qwen tokenization of all 1,454 rows,
+and a two-step CPU Trainer/LoRA integration run passed. That run uses a tiny random
+Qwen2 model and checks library compatibility and padding; it does not train the 7B
+model. Full examples use 81–207 tokens, below the 1,536 limit. Normalized questions
+and exact answers have zero overlap between splits. Related topics and conflicting
+community labels still require review. Retrieval calibration passed 5/5 answerable
+and 0/5 adversarial probes. This is a small calibration set, not an independent benchmark.
 
 ## Remaining evidence
 
