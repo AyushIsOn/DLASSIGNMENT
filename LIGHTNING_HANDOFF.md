@@ -5,7 +5,19 @@
 The archive contains source, locked dependencies, the bundled PDF, processed data,
 training/validation/test JSONL, attribution, and integrity manifests. Raw Kaggle
 archives and credentials stay on the preparation machine. No Kaggle token is
-needed to use this archive. GPU training has not been executed locally.
+needed to use this archive. The active prepared corpus fingerprint is
+`3f2ae80f27d0cbf11a6c64df285e807cd4018213ffa5ed9964ae8561a775e9dd`; it contains
+28,169 retrieval chunks and 1,456 complete SFT examples (1,161 train, 146
+validation, 149 test). GPU training has not been executed locally.
+
+The merge includes the repository PDF, 1,000 Ayurvedic knowledge records, 446
+AyurGenixAI Ayurveda profiles, 77 deduplicated healthcare profiles for retrieval,
+12,241 accepted MedQuAD records for retrieval, four official AYUSH educational
+passages, and 2,582 public-domain Sushruta passages. MedQuAD and the healthcare
+table are deliberately retrieval-only; prescription, medicine, formulation, and
+medical-intervention fields from the Kaggle profile table are excluded from the
+prepared text. Review the generated `DATA_CARD.md` and `attribution.json` before
+redistribution.
 
 ## Upload and install
 
@@ -72,8 +84,9 @@ bash scripts/lightning_a100.sh --workspace "$PWD" --quote ../quote.json --train-
 This performs a 5-step smoke run, a 100-step profile, held-out/adversarial checks,
 adapter export, and support-verified RAG serving smoke. A failed quality/support
 check is a failed check; it must not be bypassed to label training complete.
-100 steps is a pilot, not a demonstrated quality improvement. Use a larger
-`--train-steps` only within your measured budget. Compatible checkpoints resume
+100 steps is a pilot, not a demonstrated quality improvement. The trainer masks
+the user/provenance prefix from loss and evaluates the held-out validation split.
+Use a larger `--train-steps` only within your measured budget. Compatible checkpoints resume
 when the step target is extended; data/config changes invalidate them.
 
 ## Serve the exported adapter
@@ -103,7 +116,7 @@ structure was validated.
 ## Remaining evidence
 
 Full semantic retrieval, support-verifier model execution, GPU training, and actual
-iOS simulator execution require their respective environments. The seven-row
+iOS simulator execution require their respective environments. The ten-row
 committed retrieval evaluation is a smoke set, not a clinical benchmark. Source
 citations and policy filters are not evidence of medical correctness. Review the
 prepared DATA_CARD and attribution before extending or distributing the corpus.

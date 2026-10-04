@@ -16,6 +16,16 @@ def test_precedence_and_positive_cases(project_root: Path) -> None:
     assert policy.classify_query("Do I have psoriasis?").action is SafetyAction.DIAGNOSIS
     assert policy.classify_query("What should I take?").action is SafetyAction.INDIVIDUAL_TREATMENT
     assert policy.classify_query("What dosage is right?").action is SafetyAction.DOSE
+    assert policy.classify_query("I want to end my life").action is SafetyAction.SELF_HARM
+    assert policy.classify_query("My lips are turning blue").action is SafetyAction.URGENT
+    assert (
+        policy.classify_query("What exact dose should I personally take?").action
+        is SafetyAction.DOSE
+    )
+    assert (
+        policy.classify_query("Should I stop insulin and use herbs?").action
+        is SafetyAction.INDIVIDUAL_TREATMENT
+    )
 
 
 def test_benign_educational_query_retrieves(project_root: Path) -> None:
@@ -27,6 +37,8 @@ def test_benign_educational_query_retrieves(project_root: Path) -> None:
 def test_candidate_is_rejected_whole(project_root: Path) -> None:
     policy = _policy(project_root)
     assert not policy.candidate_allowed("General context. You should take 5 mg twice a day.")
+    assert not policy.candidate_allowed("This remedy cures every cancer.")
+    assert not policy.candidate_allowed("")
     assert policy.candidate_allowed("Vata and Kapha are described in the source.")
 
 

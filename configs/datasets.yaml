@@ -1,4 +1,8 @@
 version: 2
+sft_sources:
+  - akashkumarpr/ayurvedic-knowledge-dataset/1
+  - bundled_pdf
+  - kagglekirti123/ayurgenixai-ayurvedic-dataset/1
 bundled_pdf:
   id: bundled_pdf
   path: "data/dataset V1.0.pdf"
@@ -119,3 +123,63 @@ kaggle:
         auth_score_floor: "0.80"
         authentication_placeholders: [n/a, na, none, unknown, pending, not available, "-"]
         negative_authentication_phrases: [not authenticated, unauthenticated, authentication failed, unverifiable, unverified, false]
+supplemental:
+  kagglekirti123/ayurgenixai-ayurvedic-dataset/1:
+    required: false
+    relative_path: data/raw/kaggle__ayurgenixai/1/files/AyurGenixAI_Dataset.csv
+    archive_relative_path: data/raw/kaggle__ayurgenixai/1/archive.zip
+    url: https://www.kaggle.com/datasets/kagglekirti123/ayurgenixai-ayurvedic-dataset
+    owner: kagglekirti123
+    slug: ayurgenixai-ayurvedic-dataset
+    version: 1
+    license: CC BY 4.0
+    required_credit: "AyurGenixAI: Ayurvedic Dataset"
+    trust_tier: ayurveda_secondary
+    expected_rows: 446
+    archive_sha256: db5c518673a8aec21458b4319b7759af6a460e653bc4171f429753ea5260a248
+    members:
+      AyurGenixAI_Dataset.csv: 6b722b8784e5947b762d93a0f1a6e86650ca7af27bbe21a95ab0c84afd4f37d5
+    primary_member: AyurGenixAI_Dataset.csv
+    header_sha256: 2242a783dd90b292b785e4ed2e220337c71b917f9bce5c008af8dce1fef6c803
+    headers: [Disease, Hindi Name, Marathi Name, Symptoms, Diagnosis & Tests, Symptom Severity, Duration of Treatment, Medical History, Current Medications, Risk Factors, Environmental Factors, Sleep Patterns, Stress Levels, Physical Activity Levels, Family History, Dietary Habits, Allergies (Food/Env), Seasonal Variation, Age Group, Gender, Occupation and Lifestyle, Cultural Preferences, Herbal/Alternative Remedies, Ayurvedic Herbs, Formulation, Doshas, Constitution/Prakriti, Diet and Lifestyle Recommendations, Yoga & Physical Therapy, Medical Intervention, Prevention, Prognosis, Complications, Patient Recommendations]
+    field_map:
+      Disease: disease
+      Hindi Name: hindi_name
+      Marathi Name: marathi_name
+      Symptoms: symptoms
+      Doshas: doshas
+      Constitution/Prakriti: constitution
+      Diet and Lifestyle Recommendations: diet_lifestyle
+      Yoga & Physical Therapy: yoga
+      Prevention: prevention
+      Prognosis: prognosis
+    admission:
+      content_min: 40
+text_sources:
+  official_ayush_principles/1:
+    relative_path: data/raw/official_ayush/1/ayusoft-principles.txt
+    url: https://ayusoft.ayush.gov.in/principles-of-ayurveda/
+    title: Official AYUSH educational notes on Ayurvedic principles
+    version: 1
+    license: government educational webpage
+    required_credit: "Ayusoft, Ministry of AYUSH; Directorate of AYUSH, Government of NCT Delhi"
+    trust_tier: official_educational
+    sha256: 8f224a751ef4eb35aceb3b4fc75d0c473793a463c2e6b88bd362213c10585ef1
+    source_reference: Ayusoft and Delhi AYUSH educational pages on Ayurvedic principles
+    minimum_characters: 120
+    questions:
+      - "What are the three doshas in Ayurveda?"
+      - "What do Vata, Pitta and Kapha mean in Ayurvedic theory?"
+      - "How does Ayurveda describe health and balance?"
+      - "What does prakriti mean in Ayurveda?"
+  public_domain_sushruta/1:
+    relative_path: data/raw/public_domain__sushruta/1/sushruta-vol1.txt
+    url: https://archive.org/details/englishtranslati00susruoft
+    title: Sushruta Samhita, Volume 1 (1907 English translation)
+    version: 1
+    license: public domain
+    required_credit: "Susruta; translated by Kunja Lal Bhishagratna (1907)"
+    trust_tier: primary_historical_public_domain
+    sha256: 8a597a0e153f5ee4ea036edf3d1c92319f0452e8eca5d97276f1f1041c30dd5a
+    source_reference: Sushruta Samhita, Volume 1
+    minimum_characters: 120

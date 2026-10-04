@@ -100,6 +100,50 @@ def parse_qa_pages(pages: tuple[str, ...], source: str = "bundled_pdf") -> tuple
     return tuple(records)
 
 
+def load_text_source(path: Path, dataset_id: str, spec: dict[str, Any]) -> LoadedDataset:
+    """Load paragraph-level source text while preserving stable paragraph provenance."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    records: list[SourceRecord] = []
+    rejected: list[RejectedRow] = []
+    paragraphs = [normalize_text(part) for part in re.split(r"\n\s*\n+", text)]
+    ordinal = 0
+    for paragraph in paragraphs:
+        if len(paragraph) < int(spec.get("minimum_characters", 120)):
+            continue
+        ordinal += 1
+        questions = spec.get("questions", ())
+        if isinstance(questions, list) and ordinal <= len(questions):
+            question = str(questions[ordinal - 1])
+        else:
+            question = f"{spec['title']} passage {ordinal}"
+        records.append(
+            SourceRecord(
+                dataset_id,
+                0,
+                ordinal,
+                question,
+                paragraph,
+                int(spec["version"]),
+                f"paragraph={ordinal}",
+                str(spec["license"]),
+                str(spec["url"]),
+                str(spec["trust_tier"]),
+                "historical",
+                str(spec.get("source_reference", spec["title"])),
+            )
+        )
+    if not records:
+        raise ConfigurationError(f"zero accepted text rows:{dataset_id}")
+    return LoadedDataset(
+        dataset_id,
+        ("title", "text"),
+        header_sha256(("title", "text")),
+        len(records),
+        tuple(records),
+        tuple(rejected),
+    )
+
+
 def _required(value: str, reason: str) -> str:
     normalized = normalize_text(value)
     if normalized.casefold() in _PLACEHOLDERS:
@@ -134,17 +178,15 @@ def _knowledge(mapped: dict[str, str], admission: dict[str, Any]) -> tuple[str, 
     if not int(admission["title_min"]) <= len(title) <= int(admission["title_max"]):
         raise ValueError("title_length")
     source = _required(mapped["source_reference"], "missing_source_reference")
-    candidates = [
-        mapped["modern_equivalent"],
-        mapped["body_system"],
-        mapped["dosha"],
-        mapped["prognosis"],
-        mapped["symptoms"],
-    ]
+    fields = (
+        ("Modern equivalent", mapped["modern_equivalent"]),
+        ("Body system", mapped["body_system"]),
+        ("Dosha predominance", mapped["dosha"]),
+        ("Prognosis", mapped["prognosis"]),
+        ("Symptoms", mapped["symptoms"]),
+    )
     substantive = [
-        normalize_text(value)
-        for value in candidates
-        if len(normalize_text(value)) >= int(admission["substantive_min"])
+        f"{label}: {normalize_text(value)}" for label, value in fields if normalize_text(value)
     ]
     if not substantive:
         raise ValueError("missing_substantive_content")
@@ -171,19 +213,56 @@ def _healthcare(mapped: dict[str, str], admission: dict[str, Any]) -> tuple[str,
     ):
         raise ValueError("negative_authentication_notes")
     content_fields = (
-        "symptoms",
-        "preventive_advice",
-        "seasonal_suitability",
-        "classical_texts",
-        "modern_evidence",
-        "contraindications",
+        ("Symptoms", "symptoms"),
+        ("Dosha", "dosha"),
+        ("Body system", "body_system"),
+        ("Course", "course"),
+        ("Treatment type", "treatment_type"),
+        ("Preventive advice", "preventive_advice"),
+        ("Seasonal suitability", "seasonal_suitability"),
+        ("Age/gender relevance", "gender_age_relevance"),
+        ("Contraindications", "contraindications"),
     )
     content = ". ".join(
-        normalize_text(mapped[name]) for name in content_fields if normalize_text(mapped[name])
+        f"{label}: {normalize_text(mapped[name])}"
+        for label, name in content_fields
+        if normalize_text(mapped[name])
     )
     if not content:
         raise ValueError("missing_substantive_content")
     return problem, content, source
+
+
+def _ayurgenix(mapped: dict[str, str], admission: dict[str, Any]) -> tuple[str, str, str]:
+    """Project the Kaggle profile table into non-prescriptive educational records.
+
+    Formulations, medicines and medical interventions are deliberately excluded. The
+    source is a secondary dataset and remains labelled as such in provenance.
+    """
+    disease = _required(mapped["disease"], "missing_disease")
+    fields = (
+        ("Hindi name", "hindi_name"),
+        ("Marathi name", "marathi_name"),
+        ("Symptoms", "symptoms"),
+        ("Doshas", "doshas"),
+        ("Constitution/Prakriti", "constitution"),
+        ("Diet and lifestyle", "diet_lifestyle"),
+        ("Yoga and physical therapy", "yoga"),
+        ("Prevention", "prevention"),
+        ("Prognosis", "prognosis"),
+    )
+    content = ". ".join(
+        f"{label}: {normalize_text(mapped[name])}"
+        for label, name in fields
+        if normalize_text(mapped[name])
+    )
+    if len(content) < int(admission.get("content_min", 40)):
+        raise ValueError("missing_substantive_content")
+    return (
+        f"What are the symptoms and Ayurvedic profile of {disease}?",
+        f"Disease: {disease}. {content}",
+        normalize_text(mapped.get("source_reference", "Kaggle AyurGenixAI dataset")),
+    )
 
 
 def load_csv_dataset(
@@ -219,6 +298,9 @@ def load_csv_dataset(
             elif dataset_id == "aliainaanraza/ayurveda-healthcare-dataset/2":
                 question, answer, source_reference = _healthcare(mapped, spec["admission"])
                 role_hint = "educational"
+            elif dataset_id == "kagglekirti123/ayurgenixai-ayurvedic-dataset/1":
+                question, answer, source_reference = _ayurgenix(mapped, spec["admission"])
+                role_hint = "educational"
             else:
                 raise ConfigurationError(f"dataset_not_allowlisted:{dataset_id}")
         except ValueError as error:
@@ -241,6 +323,20 @@ def load_csv_dataset(
                 mapped,
             )
         )
+    if dataset_id == "aliainaanraza/ayurveda-healthcare-dataset/2":
+        # The source repeats each condition as numbered variants. Keep one stable
+        # profile per underlying problem; variants are not independent supervision.
+        seen_problems: set[str] = set()
+        deduped: list[SourceRecord] = []
+        for record in records:
+            key = re.sub(r"\s*-\s*variant\s+\d+\s*$", "", record.question, flags=re.IGNORECASE)
+            key = normalize_text(key).casefold()
+            if key in seen_problems:
+                rejected.append(RejectedRow(record.ordinal + 1, "repeated_problem_variant"))
+                continue
+            seen_problems.add(key)
+            deduped.append(record)
+        records = deduped
     return LoadedDataset(
         dataset_id, headers, observed_hash, len(rows), tuple(records), tuple(rejected)
     )

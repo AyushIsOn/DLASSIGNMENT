@@ -102,6 +102,8 @@ class SafetyPolicy:
 
     def candidate_allowed(self, text: str) -> bool:
         normalized = normalize_safety_text(text)
+        if not normalized:
+            return False
         return not any(
             pattern.search(normalized)
             for patterns in self.candidate_patterns.values()

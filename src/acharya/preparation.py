@@ -6,7 +6,7 @@ import json
 import os
 from datetime import UTC, datetime
 
-from acharya.config import Settings, canonical_json
+from acharya.config import Settings, canonical_json, sha256_file
 from acharya.ingest.download import AcquisitionError, acquire_dataset, blocker_record
 from training.prepare_sft import (
     Preparation,
@@ -26,6 +26,39 @@ def _write_gate(settings: Settings, value: dict[str, object]) -> None:
 def prepare_handoff(settings: Settings, *, strict: bool) -> Preparation:
     acquisitions = []
     configured = settings.datasets["kaggle"]
+    if strict:
+        for dataset_id, spec in settings.datasets.get("supplemental", {}).items():
+            source = settings.workspace / str(spec["relative_path"])
+            expected = str(spec["members"][spec["primary_member"]])
+            if not source.is_file() or sha256_file(source) != expected:
+                error = RuntimeError(f"supplemental source unavailable:{dataset_id}")
+                _write_gate(
+                    settings,
+                    {
+                        "schema_version": 1,
+                        "gate": "B",
+                        "status": "BLOCKED_EXTERNAL_DATA",
+                        "component": "supplemental_dataset",
+                        "evidence": {"message": str(error), "redacted": True},
+                    },
+                )
+                raise error
+        for dataset_id, spec in settings.datasets.get("text_sources", {}).items():
+            source = settings.workspace / str(spec["relative_path"])
+            expected = str(spec["sha256"])
+            if not source.is_file() or sha256_file(source) != expected:
+                error = RuntimeError(f"text source unavailable:{dataset_id}")
+                _write_gate(
+                    settings,
+                    {
+                        "schema_version": 1,
+                        "gate": "B",
+                        "status": "BLOCKED_EXTERNAL_DATA",
+                        "component": "text_source",
+                        "evidence": {"message": str(error), "redacted": True},
+                    },
+                )
+                raise error
     blockers: list[tuple[AcquisitionError, dict[str, object]]] = []
     for dataset_id, spec in configured["datasets"].items():
         try:

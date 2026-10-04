@@ -22,6 +22,7 @@ from acharya.ingest.loaders import (
     SourceRecord,
     extract_pdf_pages,
     load_csv_dataset,
+    load_text_source,
     parse_qa_pages,
 )
 from acharya.ingest.normalize import Chunk, make_chunks
@@ -98,6 +99,8 @@ def _duplicate_drops(components: tuple[DuplicateComponent, ...]) -> tuple[set[st
 
 def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Preparation:
     configured = settings.datasets["kaggle"]["datasets"]
+    supplemental = settings.datasets.get("supplemental", {})
+    text_sources = settings.datasets.get("text_sources", {})
     acquired = {item.dataset_id: item for item in acquisitions}
     if set(acquired) != set(configured):
         raise RuntimeError("preparation requires all configured Kaggle datasets")
@@ -120,9 +123,53 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         inventory.append(
             {
                 "dataset_id": dataset_id,
-                "version": int(spec["version"]),
+                "version": int(str(spec["version"])),
                 "archive_sha256": acquisition.archive_sha256,
                 "members": acquisition.member_sha256,
+            }
+        )
+    active_supplemental: dict[str, dict[str, object]] = {}
+    for dataset_id, raw_spec in supplemental.items():
+        spec = dict(raw_spec)
+        source = settings.workspace / str(spec["relative_path"])
+        expected_member = str(spec["members"][spec["primary_member"]])
+        if not source.is_file() or sha256_file(source) != expected_member:
+            if not bool(spec.get("required", False)):
+                continue
+            raise RuntimeError(f"supplemental source hash mismatch:{dataset_id}")
+        result = load_csv_dataset(source, dataset_id, spec)
+        if not result.records:
+            raise RuntimeError(f"zero accepted supplemental rows:{dataset_id}")
+        loaded[dataset_id] = result
+        active_supplemental[dataset_id] = spec
+        records.extend(result.records)
+        inventory.append(
+            {
+                "dataset_id": dataset_id,
+                "version": int(str(spec["version"])),
+                "archive_sha256": str(spec["archive_sha256"]),
+                "members": {str(spec["primary_member"]): expected_member},
+            }
+        )
+    active_text_sources: dict[str, dict[str, object]] = {}
+    for dataset_id, raw_spec in text_sources.items():
+        spec = dict(raw_spec)
+        source = settings.workspace / str(spec["relative_path"])
+        expected = str(spec["sha256"])
+        if not source.is_file() or sha256_file(source) != expected:
+            if not bool(spec.get("required", False)):
+                continue
+            raise RuntimeError(f"text source hash mismatch:{dataset_id}")
+        result = load_text_source(source, dataset_id, spec)
+        loaded[dataset_id] = result
+        active_text_sources[dataset_id] = spec
+        records.extend(result.records)
+        inventory.append(
+            {
+                "dataset_id": dataset_id,
+                "version": int(str(spec["version"])),
+                "archive_sha256": expected,
+                "members": {str(spec["relative_path"]): expected},
             }
         )
     policy = SafetyPolicy(settings.safety)
@@ -139,11 +186,23 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
     if not unique:
         raise RuntimeError("merged corpus has no eligible chunks")
     sources = {item.source for item in unique}
-    required_sources = {"bundled_pdf", *configured.keys()}
+    required_sources = {
+        "bundled_pdf",
+        *configured.keys(),
+        *active_supplemental.keys(),
+        *active_text_sources.keys(),
+    }
     if sources != required_sources:
         missing = sorted(required_sources - sources)
         raise RuntimeError(f"sources_without_retrieval_rows:{','.join(missing)}")
-    sft_chunks = tuple(item for item in unique if policy.candidate_allowed(item.text))
+    sft_sources = set(settings.datasets.get("sft_sources", ()))
+    if not sft_sources:
+        sft_sources = set(configured) | {"bundled_pdf"}
+    sft_chunks = tuple(
+        item
+        for item in unique
+        if item.source in sft_sources and policy.candidate_allowed(item.text)
+    )
     split_rows: dict[str, list[dict[str, object]]] = {"train": [], "validation": [], "test": []}
     split_ids: dict[str, set[str]] = {"train": set(), "validation": set(), "test": set()}
     for chunk in sft_chunks:
@@ -278,12 +337,32 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         attribution.extend(
             {
                 "dataset": dataset_id,
-                "version": int(spec["version"]),
+                "version": int(str(spec["version"])),
                 "license": spec["license"],
                 "url": spec["url"],
                 "required_credit": spec["required_credit"],
             }
             for dataset_id, spec in sorted(configured.items())
+        )
+        attribution.extend(
+            {
+                "dataset": dataset_id,
+                "version": int(str(spec["version"])),
+                "license": spec["license"],
+                "url": spec["url"],
+                "required_credit": spec["required_credit"],
+            }
+            for dataset_id, spec in sorted(active_supplemental.items())
+        )
+        attribution.extend(
+            {
+                "dataset": dataset_id,
+                "version": int(str(spec["version"])),
+                "license": spec["license"],
+                "url": spec["url"],
+                "required_credit": spec["required_credit"],
+            }
+            for dataset_id, spec in sorted(active_text_sources.items())
         )
         _json(report_stage / "attribution.json", attribution)
         (report_stage / "DATA_CARD.md").write_text(
