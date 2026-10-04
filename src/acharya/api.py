@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from acharya.providers.runtime import configured_provider
 from acharya.rag.service import RAGService, ServiceUnavailable
 from acharya.schemas import ChatRequest, ChatResponse, HealthResponse
 
@@ -17,7 +18,13 @@ def create_app(
     workspace: Path | str | None = None, *, service: RAGService | None = None
 ) -> FastAPI:
     root = workspace or os.environ.get("ACHARYA_WORKSPACE") or Path(__file__).resolve().parents[2]
-    service = service or RAGService(root)
+    if service is None:
+        provider = configured_provider(Path(root), os.environ)
+        service = RAGService(
+            root,
+            generative_provider=provider,
+            generation_mode="optional" if provider is not None else "extractive",
+        )
     app = FastAPI(title="AcharyaGPT", version="0.1.0")
     app.state.service = service
 
@@ -58,7 +65,7 @@ def create_app(
         return response
 
     @app.post("/v1/chat", response_model=ChatResponse)
-    async def chat(request: ChatRequest) -> ChatResponse:
+    def chat(request: ChatRequest) -> ChatResponse:
         return service.chat(request)
 
     return app

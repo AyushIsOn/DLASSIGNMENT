@@ -23,25 +23,35 @@ responses:
 query_patterns:
   urgent:
     - "\\b(?:cannot|can't|unable to) breathe\\b"
+    - "\\b(?:trouble|difficulty) breathing\\b"
+    - "\\b(?:blue|bluish) lips?\\b"
+    - "\\blips? (?:are|is) (?:turning )?(?:blue|bluish)\\b"
     - "\\b(?:severe )?chest pain\\b"
     - "\\b(?:unconscious|seizure|heavy bleeding|overdose)\\b"
   self_harm:
     - "\\b(?:kill|hurt|harm) (?:myself|me)\\b"
+    - "\\b(?:want|plan|thinking|going) to (?:end|kill|hurt|harm) (?:myself|my life)\\b"
     - "\\b(?:suicidal|suicide)\\b"
   diagnosis:
     - "\\b(?:diagnose me|do i have|what disease do i have)\\b"
   individual_treatment:
     - "\\b(?:what should i take|treat me|prescribe|replace my medicine)\\b"
+    - "\\b(?:stop|replace|discontinue) (?:my|your|taking) (?:medicine|medication|insulin|drug)s?\\b"
+    - "\\b(?:stop|replace|discontinue)\\b[^.!?]{0,32}\\b(?:medicine|medication|insulin|drug)s?\\b"
   dose:
     - "\\b(?:what|which|give me|recommend)(?: is the)? (?:dose|dosage)\\b"
+    - "\\b(?:exact|personalized|personally) (?:dose|dosage)\\b"
 candidate_patterns:
   dose:
     - "\\b\\d+(?:\\.\\d+)?\\s*(?:mg|g|ml|mcg|tablets?|capsules?)\\b"
     - "\\b(?:once|twice|three times) (?:a|per) day\\b"
   directive:
-    - "\\b(?:you should|you must|take|stop taking|increase|decrease)\\b"
+    - "\\b(?:you should|you must|you need to|you have to)\\b"
+    - "\\b(?:stop|replace|discontinue) (?:taking|your|the)\\b"
   personalized_diagnosis:
     - "\\b(?:you have|you are suffering from|your diagnosis is)\\b"
+  unsupported_universal_claim:
+    - "\\b(?:cures?|treats?)\\s+(?:every|all)\\s+(?:cancer|disease|condition)s?\\b"
 role_patterns:
   treatment:
     - "\\b(?:dosage|dose|treatment|panchakarma|medication|virechana|prescription|intake|avoid)\\b"

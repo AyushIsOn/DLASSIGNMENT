@@ -98,9 +98,12 @@ def _queries(
     answerable_values: list[str] = []
     adversarial_values: list[str] = []
     categories: list[str] = []
+    sources = {document.source for document in index.documents}
     for row in rows:
         kind = row.get("kind")
         if kind == "answerable":
+            if row.get("requires_source") and row["requires_source"] not in sources:
+                continue
             query = row.get("query")
             if query is None and row.get("query_source") == "first_chunk_informative_terms":
                 terms = tuple(
@@ -213,14 +216,27 @@ def calibrate(
         reranker = reranker or loaded_reranker
     lexical_index = replace(index, mode="bm25_only")
     raw_answerable = [retrieve(lexical_index, query, top_k=1)[0] for query in answerable_queries]
-    viable = [hit for hit in raw_answerable if hit.informative_overlap >= 2 and hit.bm25_score > 0]
+    viable = [
+        hit for hit in raw_answerable
+        if hit.informative_overlap >= 2 and hit.bm25_score > 0
+    ]
+    # Use viable hits to set thresholds, but retain failures in the denominator.
     if not viable:
         raise RuntimeError("calibration has no viable answerable rows")
     raw_adversarial = [retrieve(lexical_index, query, top_k=1)[0] for query in adversarial_queries]
-    maximum_false_score = max((hit.bm25_score for hit in raw_adversarial), default=0.0)
     minimum_true_score = min(hit.bm25_score for hit in viable)
-    raw_floor = max(maximum_false_score + 1e-9, minimum_true_score * 0.5)
     coverage_floor = min(hit.lexical_coverage for hit in viable) * 0.8
+    # A low-coverage adversarial hit cannot pass the lexical coverage gate, so it
+    # should not raise the raw-score floor and suppress valid short questions.
+    maximum_false_score = max(
+        (
+            hit.bm25_score
+            for hit in raw_adversarial
+            if hit.lexical_coverage >= coverage_floor and hit.informative_overlap >= 1
+        ),
+        default=0.0,
+    )
+    raw_floor = max(maximum_false_score + 1e-9, minimum_true_score * 0.5)
     candidates = [SupportThresholds(coverage_floor, raw_floor, 2)]
     if index.mode != "bm25_only":
         dense_grid = [float(item) for item in settings.rag["support"]["dense_grid"]]

@@ -1,9 +1,10 @@
-"""Deterministic merged retrieval corpus and leakage-free SFT preparation."""
+"""Deterministic retrieval corpus and question-grouped complete-answer SFT."""
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import tempfile
 from collections import Counter, defaultdict
@@ -11,8 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import pyarrow as pa  # type: ignore[import-untyped]
-import pyarrow.parquet as pq  # type: ignore[import-untyped]
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from acharya.config import Settings, canonical_json, sha256_bytes, sha256_file
 from acharya.ingest.dedupe import DuplicateComponent, deduplicate
@@ -22,9 +23,10 @@ from acharya.ingest.loaders import (
     SourceRecord,
     extract_pdf_pages,
     load_csv_dataset,
+    load_text_source,
     parse_qa_pages,
 )
-from acharya.ingest.normalize import Chunk, make_chunks
+from acharya.ingest.normalize import Chunk, make_chunks, normalize_text
 from acharya.safety import SafetyPolicy
 
 
@@ -60,13 +62,33 @@ def _jsonl(path: Path, rows: list[dict[str, object]]) -> None:
             handle.write(canonical_json(row) + b"\n")
 
 
+def _question_key(question: str) -> str:
+    return " ".join(re.findall(r"\w+", normalize_text(question).casefold()))
+
+
 def _split(chunk: Chunk) -> str:
-    bucket = int(sha256_bytes(chunk.chunk_id.encode())[:8], 16) % 10
+    bucket = int(sha256_bytes(_question_key(chunk.question).encode())[:8], 16) % 10
     if bucket == 0:
         return "test"
     if bucket == 1:
         return "validation"
     return "train"
+
+
+def _complete_sft(
+    records: list[SourceRecord], policy: SafetyPolicy, sources: set[str],
+    threshold: float, shingle_words: int,
+) -> tuple[tuple[Chunk, ...], tuple[DuplicateComponent, ...]]:
+    # Retrieval windows are not independent answers. Apply policy to the whole
+    # answer and create one training example per source record before deduplication.
+    selected = tuple(record for record in records if record.source in sources)
+    maximum = max((len(record.answer.split()) for record in selected), default=1)
+    complete = make_chunks(selected, policy, max(maximum, 1), 0)
+    eligible = tuple(
+        item for item in complete
+        if policy.role_allowed(item.role) and policy.candidate_allowed(item.text)
+    )
+    return deduplicate(eligible, threshold, shingle_words)
 
 
 def _sft_row(chunk: Chunk) -> dict[str, object]:
@@ -79,7 +101,7 @@ def _sft_row(chunk: Chunk) -> dict[str, object]:
         "provenance": {
             "dataset": chunk.source,
             "version": chunk.dataset_version,
-            "locator": chunk.locator or f"page={chunk.page}",
+            "locator": chunk.locator or chunk.provenance,
             "license": chunk.license,
             "url": chunk.url,
             "source_reference": chunk.source_reference,
@@ -98,6 +120,8 @@ def _duplicate_drops(components: tuple[DuplicateComponent, ...]) -> tuple[set[st
 
 def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Preparation:
     configured = settings.datasets["kaggle"]["datasets"]
+    supplemental = settings.datasets.get("supplemental", {})
+    text_sources = settings.datasets.get("text_sources", {})
     acquired = {item.dataset_id: item for item in acquisitions}
     if set(acquired) != set(configured):
         raise RuntimeError("preparation requires all configured Kaggle datasets")
@@ -120,10 +144,53 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         inventory.append(
             {
                 "dataset_id": dataset_id,
-                "version": int(spec["version"]),
+                "version": int(str(spec["version"])),
                 "archive_sha256": acquisition.archive_sha256,
                 "members": acquisition.member_sha256,
-                "cache_used": acquisition.cache_used,
+            }
+        )
+    active_supplemental: dict[str, dict[str, object]] = {}
+    for dataset_id, raw_spec in supplemental.items():
+        spec = dict(raw_spec)
+        source = settings.workspace / str(spec["relative_path"])
+        expected_member = str(spec["members"][spec["primary_member"]])
+        if not source.is_file() or sha256_file(source) != expected_member:
+            if not bool(spec.get("required", False)):
+                continue
+            raise RuntimeError(f"supplemental source hash mismatch:{dataset_id}")
+        result = load_csv_dataset(source, dataset_id, spec)
+        if not result.records:
+            raise RuntimeError(f"zero accepted supplemental rows:{dataset_id}")
+        loaded[dataset_id] = result
+        active_supplemental[dataset_id] = spec
+        records.extend(result.records)
+        inventory.append(
+            {
+                "dataset_id": dataset_id,
+                "version": int(str(spec["version"])),
+                "archive_sha256": str(spec["archive_sha256"]),
+                "members": {str(spec["primary_member"]): expected_member},
+            }
+        )
+    active_text_sources: dict[str, dict[str, object]] = {}
+    for dataset_id, raw_spec in text_sources.items():
+        spec = dict(raw_spec)
+        source = settings.workspace / str(spec["relative_path"])
+        expected = str(spec["sha256"])
+        if not source.is_file() or sha256_file(source) != expected:
+            if not bool(spec.get("required", False)):
+                continue
+            raise RuntimeError(f"text source hash mismatch:{dataset_id}")
+        result = load_text_source(source, dataset_id, spec)
+        loaded[dataset_id] = result
+        active_text_sources[dataset_id] = spec
+        records.extend(result.records)
+        inventory.append(
+            {
+                "dataset_id": dataset_id,
+                "version": int(str(spec["version"])),
+                "archive_sha256": expected,
+                "members": {str(spec["relative_path"]): expected},
             }
         )
     policy = SafetyPolicy(settings.safety)
@@ -131,8 +198,11 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
     all_chunks = make_chunks(
         tuple(records), policy, int(chunking["max_words"]), int(chunking["overlap_words"])
     )
-    role_rejected = tuple(item for item in all_chunks if not policy.role_allowed(item.role))
-    eligible = tuple(item for item in all_chunks if policy.role_allowed(item.role))
+    quarantined = set(settings.datasets.get("quarantined_sources", {}))
+    role_rejected = tuple(item for item in all_chunks
+                          if not policy.role_allowed(item.role) or item.source in quarantined)
+    eligible = tuple(item for item in all_chunks
+                     if policy.role_allowed(item.role) and item.source not in quarantined)
     dedupe = settings.ingestion["dedupe"]
     unique, components = deduplicate(
         eligible, float(dedupe["jaccard_threshold"]), int(dedupe["shingle_words"])
@@ -140,21 +210,34 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
     if not unique:
         raise RuntimeError("merged corpus has no eligible chunks")
     sources = {item.source for item in unique}
-    required_sources = {"bundled_pdf", *configured.keys()}
-    if sources != required_sources:
-        missing = sorted(required_sources - sources)
+    required_sources = {
+        "bundled_pdf",
+        *configured.keys(),
+        *active_supplemental.keys(),
+        *active_text_sources.keys(),
+    }
+    if sources != required_sources - quarantined:
+        missing = sorted(required_sources - quarantined - sources)
         raise RuntimeError(f"sources_without_retrieval_rows:{','.join(missing)}")
-    sft_chunks = tuple(item for item in unique if policy.candidate_allowed(item.text))
+    sft_sources = set(settings.datasets.get("sft_sources", ()))
+    if not sft_sources:
+        sft_sources = set(configured) | {"bundled_pdf"}
+    sft_chunks, sft_components = _complete_sft(
+        records, policy, sft_sources - quarantined,
+        float(dedupe["jaccard_threshold"]), int(dedupe["shingle_words"]),
+    )
     split_rows: dict[str, list[dict[str, object]]] = {"train": [], "validation": [], "test": []}
     split_ids: dict[str, set[str]] = {"train": set(), "validation": set(), "test": set()}
+    split_questions: dict[str, set[str]] = {key: set() for key in split_ids}
     for chunk in sft_chunks:
         split = _split(chunk)
         split_rows[split].append(_sft_row(chunk))
         split_ids[split].add(chunk.chunk_id)
+        split_questions[split].add(_question_key(chunk.question))
     if any(not rows for rows in split_rows.values()):
         raise RuntimeError("inadequate SFT split groups")
     if any(
-        split_ids[left] & split_ids[right]
+        (split_ids[left] & split_ids[right]) or (split_questions[left] & split_questions[right])
         for left in split_ids
         for right in split_ids
         if left != right
@@ -163,7 +246,8 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
     exact_drops, near_drops = _duplicate_drops(components)
     rejection_by_source: dict[str, Counter[str]] = defaultdict(Counter)
     for item in role_rejected:
-        rejection_by_source[item.source][f"role_{item.role}"] += 1
+        reason = "source_quality_quarantine" if item.source in quarantined else f"role_{item.role}"
+        rejection_by_source[item.source][reason] += 1
     for dataset_id, result in loaded.items():
         rejection_by_source[dataset_id].update(item.reason for item in result.rejected)
     source_counts: dict[str, dict[str, int]] = {}
@@ -205,13 +289,18 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         for dataset_id, result in sorted(loaded.items())
     }
     fingerprint_input = {
-        "schema_version": 2,
+        "schema_version": 4,
         "config_sha256": settings.config_hash("ingestion", "safety", "datasets"),
         "raw_inventory": inventory,
         "chunks": chunks,
         "duplicates": [item.as_dict() for item in components],
+        "sft_duplicates": [item.as_dict() for item in sft_components],
         "split_ids": {key: sorted(value) for key, value in split_ids.items()},
+        "sft_sha256": {
+            key: sha256_bytes(canonical_json(value)) for key, value in split_rows.items()
+        },
         "source_counts": source_counts,
+        "quarantined_sources": settings.datasets.get("quarantined_sources", {}),
     }
     fingerprint = sha256_bytes(canonical_json(fingerprint_input))
     processed_root = settings.workspace / "data" / "processed"
@@ -244,12 +333,19 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
             },
         )
         _json(report_stage / "duplicate-components.json", [item.as_dict() for item in components])
+        _json(report_stage / "sft-duplicate-components.json",
+              [item.as_dict() for item in sft_components])
         _json(
             report_stage / "split-report.json",
             {
                 "counts": {key: len(value) for key, value in split_rows.items()},
                 "ids": {key: sorted(value) for key, value in split_ids.items()},
-                "leakage": False,
+                "split_unit": "normalized_question_after_full_answer_deduplication",
+                "normalized_question_counts": {key: len(value)
+                                               for key, value in split_questions.items()},
+                "cross_split_id_overlap": 0,
+                "cross_split_normalized_question_overlap": 0,
+                "semantic_topic_overlap_audited": False,
             },
         )
         lengths = sorted(len(item.text.split()) for item in sft_chunks)
@@ -276,20 +372,42 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         attribution.extend(
             {
                 "dataset": dataset_id,
-                "version": int(spec["version"]),
+                "version": int(str(spec["version"])),
                 "license": spec["license"],
                 "url": spec["url"],
                 "required_credit": spec["required_credit"],
             }
             for dataset_id, spec in sorted(configured.items())
         )
+        attribution.extend(
+            {
+                "dataset": dataset_id,
+                "version": int(str(spec["version"])),
+                "license": spec["license"],
+                "url": spec["url"],
+                "required_credit": spec["required_credit"],
+            }
+            for dataset_id, spec in sorted(active_supplemental.items())
+        )
+        attribution.extend(
+            {
+                "dataset": dataset_id,
+                "version": int(str(spec["version"])),
+                "license": spec["license"],
+                "url": spec["url"],
+                "required_credit": spec["required_credit"],
+            }
+            for dataset_id, spec in sorted(active_text_sources.items())
+        )
         _json(report_stage / "attribution.json", attribution)
         (report_stage / "DATA_CARD.md").write_text(
             "# AcharyaGPT prepared corpus\n\n"
             "Educational retrieval data; not medical advice or proof of clinical truth. "
             "Dataset-level licenses and attribution are recorded in `attribution.json`. "
-            "Treatment, diagnosis, unsafe, unauthenticated, duplicate, and malformed "
-            "material is filtered according to committed policy.\n",
+            "Rule-based filters remove selected treatment fields and flagged content; "
+            "they do not establish clinical accuracy or safety. SFT uses complete answers, "
+            "deduplicated before splitting by normalized question. Related topics may "
+            "still span splits. Historical OCR is retrieval-only and may contain errors.\n",
             encoding="utf-8",
         )
         hash_targets = sorted(
@@ -360,6 +478,10 @@ def verify_preparation(settings: Settings, *, strict: bool = True) -> dict[str, 
     pointer: dict[str, Any] = json.loads(pointer_path.read_text(encoding="utf-8"))
     processed = Path(str(pointer["processed_path"]))
     report = Path(str(pointer["report_path"]))
+    if not processed.is_absolute():
+        processed = settings.workspace / processed
+    if not report.is_absolute():
+        report = settings.workspace / report
     manifest = json.loads((report / "manifest.json").read_text(encoding="utf-8"))
     if manifest["fingerprint"] != pointer["fingerprint"]:
         raise RuntimeError("preparation fingerprint mismatch")

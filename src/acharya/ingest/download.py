@@ -205,7 +205,7 @@ def acquire_dataset(
             )
     if client is None:
         try:
-            from kaggle.api.kaggle_api_extended import KaggleApi  # type: ignore[import-untyped]
+            from kaggle.api.kaggle_api_extended import KaggleApi
 
             api = KaggleApi()
             api.authenticate()

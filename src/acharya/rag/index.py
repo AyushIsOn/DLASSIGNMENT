@@ -181,7 +181,10 @@ def build_index(
     active = active_corpus(settings)
     if active is None:
         raise RuntimeError("no active corpus; run corpus build first")
-    corpus = json.loads((Path(str(active["path"])) / "corpus.json").read_text(encoding="utf-8"))
+    corpus_path = Path(str(active["path"]))
+    if not corpus_path.is_absolute():
+        corpus_path = settings.workspace / corpus_path
+    corpus = json.loads((corpus_path / "corpus.json").read_text(encoding="utf-8"))
     documents = tuple(
         sorted(
             (BM25Document.from_dict(item) for item in corpus["chunks"]),

@@ -55,6 +55,9 @@ class PEFTLocalProvider:
         self.base_revision = base_revision
         self._generator = generator
 
+    def set_generator(self, generator: Generator) -> None:
+        self._generator = generator
+
     def generate(self, request: ProviderRequest) -> ProviderResult:
         if not request.prompt.contexts:
             raise ProviderConfigurationError("PEFT generation cannot disable RAG")

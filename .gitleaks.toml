@@ -1,0 +1,16 @@
+title = "AcharyaGPT secrets"
+[extend]
+useDefault = true
+[[rules]]
+id = "kaggle-api-token"
+description = "Kaggle API token"
+regex = '''KGAT_[A-Za-z0-9_]{20,}'''
+keywords = ["KGAT_"]
+
+[allowlist]
+description = "Public model and generated token-report checksums (not credentials)"
+regexTarget = "match"
+regexes = [
+  '''(?:tokenizer(?:_config)?|added_tokens|special_tokens_map)\.json:\s*[a-f0-9]{40,64}''',
+  '''token-report\.json\\?":\\?"[a-f0-9]{64}''',
+]

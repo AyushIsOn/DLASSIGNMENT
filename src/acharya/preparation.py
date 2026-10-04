@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 import os
 from datetime import UTC, datetime
-from typing import cast
 
 from acharya.config import Settings, canonical_json
 from acharya.ingest.download import AcquisitionError, acquire_dataset, blocker_record
-from training.prepare_sft import (  # type: ignore[import-untyped]
+from acharya.ingest.supplemental import acquire_supplemental
+from training.prepare_sft import (
     Preparation,
     prepare,
     verify_preparation,
@@ -27,6 +27,16 @@ def _write_gate(settings: Settings, value: dict[str, object]) -> None:
 def prepare_handoff(settings: Settings, *, strict: bool) -> Preparation:
     acquisitions = []
     configured = settings.datasets["kaggle"]
+    if strict:
+        try:
+            acquire_supplemental(settings)
+        except Exception as error:
+            _write_gate(settings, {
+                "schema_version": 1, "gate": "B", "status": "BLOCKED_EXTERNAL_DATA",
+                "component": "supplemental_acquisition",
+                "evidence": {"failure_category": type(error).__name__, "redacted": True},
+            })
+            raise
     blockers: list[tuple[AcquisitionError, dict[str, object]]] = []
     for dataset_id, spec in configured["datasets"].items():
         try:
@@ -88,9 +98,17 @@ def prepare_handoff(settings: Settings, *, strict: bool) -> Preparation:
 def verify_handoff(settings: Settings, *, strict: bool) -> dict[str, object]:
     gate_path = settings.workspace / "artifacts" / "gates" / "gate-b.json"
     if strict and not gate_path.is_file():
-        raise RuntimeError("Gate B evidence is missing")
+        from acharya.bundle import validate
+
+        # A transfer bundle carries hashed preparation evidence, without local
+        # acquisition state. Verify that evidence before accepting its pointer.
+        evidence = validate(settings.workspace, runtime=True)
+        result = verify_preparation(settings, strict=True)
+        if evidence["fingerprint"] != result["fingerprint"]:
+            raise RuntimeError("bundle/preparation fingerprint mismatch")
+        return result
     if gate_path.is_file():
         gate = json.loads(gate_path.read_text(encoding="utf-8"))
         if gate.get("status") == "BLOCKED_EXTERNAL_DATA":
             raise RuntimeError("Gate B is blocked by external data")
-    return cast(dict[str, object], verify_preparation(settings, strict=strict))
+    return verify_preparation(settings, strict=strict)

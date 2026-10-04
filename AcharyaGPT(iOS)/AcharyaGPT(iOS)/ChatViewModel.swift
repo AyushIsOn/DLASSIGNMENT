@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 @MainActor
@@ -62,9 +63,11 @@ final class ChatViewModel: ObservableObject {
             } catch let error as ChatAPIError {
                 errorMessage = error.localizedDescription
                 retryMessage = error == .cancelled ? nil : trimmed
+                if error == .cancelled { lastSubmittedMessage = nil }
             } catch is CancellationError {
                 errorMessage = ChatAPIError.cancelled.localizedDescription
                 retryMessage = nil
+                lastSubmittedMessage = nil
             } catch {
                 errorMessage = error.localizedDescription
                 retryMessage = trimmed

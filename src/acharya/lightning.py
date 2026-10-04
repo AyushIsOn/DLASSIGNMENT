@@ -13,7 +13,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from acharya.config import canonical_json, load_yaml, sha256_bytes, sha256_file
 
@@ -87,11 +87,11 @@ class QLoRAProfile:
 
     @property
     def training(self) -> Mapping[str, Any]:
-        return self.value["training"]
+        return cast(Mapping[str, Any], self.value["training"])
 
     @property
     def external(self) -> Mapping[str, Any]:
-        return self.value["external"]
+        return cast(Mapping[str, Any], self.value["external"])
 
 
 def _atomic_json(path: Path, value: object) -> None:
@@ -197,9 +197,10 @@ class StageStore:
         marker = self.root / f"{name}.json"
         if marker.is_file():
             existing = json.loads(marker.read_text(encoding="utf-8"))
-            if existing.get("status") == "COMPLETED" and existing.get(
-                "input_sha256"
-            ) == input_sha256:
+            if (
+                existing.get("status") == "COMPLETED"
+                and existing.get("input_sha256") == input_sha256
+            ):
                 outputs = existing.get("outputs", {})
                 if isinstance(outputs, dict) and all(
                     Path(str(record["path"])).is_file()
@@ -207,7 +208,7 @@ class StageStore:
                     for record in outputs.values()
                     if isinstance(record, dict)
                 ):
-                    return existing
+                    return cast(dict[str, object], existing)
         started = time.monotonic()
         try:
             output_paths = action()
@@ -281,9 +282,11 @@ def _gpu_snapshot() -> dict[str, object]:
         for row in rows:
             name, memory = (item.strip() for item in row.rsplit(",", 1))
             parsed.append({"name": name, "vram_mib": int(memory)})
-        compatible = len(parsed) == 1 and "A100" in str(parsed[0]["name"]) and int(
-            parsed[0]["vram_mib"]
-        ) >= 39 * 1024
+        compatible = (
+            len(parsed) == 1
+            and "A100" in str(parsed[0]["name"])
+            and int(parsed[0]["vram_mib"]) >= 39 * 1024
+        )
         return {"compatible": compatible, "devices": parsed}
     except (OSError, ValueError, subprocess.SubprocessError):
         return {"compatible": False, "category": "gpu_query_failed"}
@@ -305,8 +308,7 @@ def validate_quote(profile: QLoRAProfile, quote_path: Path) -> dict[str, object]
             "quote evidence is missing required numeric conversion fields"
         ) from error
     if not all(
-        math.isfinite(value) and value > 0
-        for value in (credits_per_hour, currency_per_credit)
+        math.isfinite(value) and value > 0 for value in (credits_per_hour, currency_per_credit)
     ) or not all(
         math.isfinite(value) and value >= 0
         for value in (startup_minutes, remaining_training_minutes, evaluation_export_minutes)
@@ -398,9 +400,7 @@ def preflight(
     return report
 
 
-def run_external_stage(
-    workspace: Path, name: str, command: Sequence[str]
-) -> dict[str, object]:
+def run_external_stage(workspace: Path, name: str, command: Sequence[str]) -> dict[str, object]:
     """Execute one external command through an input-bound, fail-closed stage marker."""
     if not command:
         raise PreflightError("stage command is missing")
@@ -430,6 +430,8 @@ def run_external_stage(
     def action() -> Mapping[str, Path]:
         result = subprocess.run(command, capture_output=True, check=False)
         receipt = evidence_root / f"{name}.json"
+        (evidence_root / f"{name}.stdout.log").write_bytes(result.stdout)
+        (evidence_root / f"{name}.stderr.log").write_bytes(result.stderr)
         _atomic_json(
             receipt,
             {
@@ -441,12 +443,12 @@ def run_external_stage(
             },
         )
         if result.returncode != 0:
-            raise RuntimeError(f"external stage failed:{name}")
+            raise RuntimeError(
+                f"external stage failed:{name}; inspect {evidence_root}/{name}.stderr.log"
+            )
         return {"receipt": receipt}
 
-    return StageStore(workspace / "artifacts" / "external-run" / "stages").run(
-        name, inputs, action
-    )
+    return StageStore(workspace / "artifacts" / "external-run" / "stages").run(name, inputs, action)
 
 
 _REQUIRED_ADVERSARIAL_IDS = frozenset(
@@ -516,9 +518,7 @@ def validate_completion_evidence(workspace: Path, report: Mapping[str, object]) 
         if not path.is_file() or sha256_file(path) != expected:
             raise PreflightError(f"adapter export hash mismatch:{name}")
 
-    evaluation = json.loads(
-        (run_root / "evaluation/evaluation.json").read_text(encoding="utf-8")
-    )
+    evaluation = json.loads((run_root / "evaluation/evaluation.json").read_text(encoding="utf-8"))
     records = evaluation.get("records")
     adversarial = evaluation.get("adversarial_cases")
     preparation = _preparation_state(workspace)
@@ -566,9 +566,7 @@ def finalize(workspace: Path, run_root: Path) -> dict[str, object]:
     missing = [str(path.relative_to(run_root)) for path in required if not path.is_file()]
     if missing:
         raise PreflightError(f"external completion artifacts missing:{','.join(missing)}")
-    hashes = {
-        path.relative_to(run_root).as_posix(): sha256_file(path) for path in sorted(required)
-    }
+    hashes = {path.relative_to(run_root).as_posix(): sha256_file(path) for path in sorted(required)}
     try:
         relative_run_root = run_root.resolve().relative_to(workspace.resolve()).as_posix()
     except ValueError as error:

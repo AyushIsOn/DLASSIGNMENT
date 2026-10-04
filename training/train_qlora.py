@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from acharya.config import canonical_json, sha256_bytes, sha256_file
 from acharya.lightning import (
@@ -27,6 +27,44 @@ def _rows(path: Path) -> list[dict[str, Any]]:
     if not values:
         raise PreflightError("training split is empty")
     return values
+
+
+def _tokenize_chat_row(
+    row: dict[str, Any], tokenizer: Any, maximum_sequence_tokens: int
+) -> dict[str, Any]:
+    """Tokenize a chat example and compute loss only on the assistant turn.
+
+    The Qwen chat template is deterministic, so tokenizing the same messages
+    with an assistant generation prompt gives us the exact prefix to mask.
+    """
+    messages = row["messages"]
+    if (
+        not isinstance(messages, list)
+        or [item.get("role") for item in messages] != ["user", "assistant"]
+        or any(not str(item.get("content", "")).strip() for item in messages)
+    ):
+        raise PreflightError("training row needs one nonempty user and assistant turn")
+    text = tokenizer.apply_chat_template(messages, tokenize=False)
+    prompt = tokenizer.apply_chat_template(
+        messages[:-1], tokenize=False, add_generation_prompt=True
+    )
+    encoded = tokenizer(
+        text,
+        add_special_tokens=False,
+        truncation=False,
+    )
+    prompt_ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
+    input_ids = list(encoded["input_ids"])
+    if len(input_ids) > maximum_sequence_tokens:
+        raise PreflightError("complete training example exceeds maximum sequence length")
+    if input_ids[:len(prompt_ids)] != list(prompt_ids):
+        raise PreflightError("chat template generation prefix does not match training text")
+    prefix_length = len(prompt_ids)
+    labels = [-100] * prefix_length + input_ids[prefix_length:]
+    if not any(label != -100 for label in labels):
+        raise PreflightError("maximum sequence length removed the assistant answer")
+    encoded["labels"] = labels
+    return cast(dict[str, Any], encoded)
 
 
 def _verify_model_snapshot(profile: QLoRAProfile, snapshot: Path) -> None:
@@ -61,6 +99,30 @@ def acquire_model(workspace: Path) -> dict[str, object]:
     }
 
 
+def training_arguments(output: Path, profile: QLoRAProfile, max_steps: int) -> dict[str, Any]:
+    """Shared argument contract for the GPU runner and CPU integration smoke."""
+    return dict(
+        output_dir=str(output),
+        max_steps=max_steps,
+        per_device_train_batch_size=int(profile.training["micro_batch_size"]),
+        per_device_eval_batch_size=int(profile.training["micro_batch_size"]),
+        gradient_accumulation_steps=int(profile.training["gradient_accumulation_steps"]),
+        learning_rate=float(profile.training["learning_rate"]),
+        lr_scheduler_type=str(profile.training["scheduler"]),
+        warmup_ratio=float(profile.training["warmup_ratio"]),
+        optim=str(profile.training["optimizer"]),
+        bf16=True,
+        gradient_checkpointing=True,
+        save_steps=int(profile.training["checkpoint_steps"]),
+        eval_strategy="steps",
+        eval_steps=int(profile.training["checkpoint_steps"]),
+        prediction_loss_only=True,
+        logging_steps=1,
+        report_to=[],
+        seed=int(profile.training["seed"]),
+    )
+
+
 def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
     profile = QLoRAProfile.load(workspace)
     if max_steps < 1:
@@ -75,11 +137,13 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
         processed = workspace / processed
     processed = processed.resolve()
     train_rows = _rows(processed / "train.jsonl")
+    validation_rows = _rows(processed / "validation.jsonl")
     run_input = {
         "qlora_sha256": profile.config_sha256,
         "preparation_fingerprint": pointer["fingerprint"],
         "train_sha256": sha256_file(processed / "train.jsonl"),
-        "max_steps": max_steps,
+        "validation_sha256": sha256_file(processed / "validation.jsonl"),
+        "training_code_sha256": sha256_file(Path(__file__)),
     }
     run_sha256 = sha256_bytes(canonical_json(run_input))
 
@@ -90,6 +154,7 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
         AutoModelForCausalLM,
         AutoTokenizer,
         BitsAndBytesConfig,
+        DataCollatorForSeq2Seq,
         Trainer,
         TrainerCallback,
         TrainingArguments,
@@ -126,38 +191,24 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
     from peft import get_peft_model
 
     model = get_peft_model(model, peft_config)
+    model.config.use_cache = False
+    model.peft_config["default"].base_model_name_or_path = profile.value["base_model"]["repository"]
+    model.peft_config["default"].revision = LOCKED_REVISION
 
     def tokenize(row: dict[str, Any]) -> dict[str, Any]:
-        text = tokenizer.apply_chat_template(row["messages"], tokenize=False)
-        encoded = tokenizer(
-            text,
-            truncation=True,
-            max_length=int(profile.training["maximum_sequence_tokens"]),
+        return _tokenize_chat_row(
+            row, tokenizer, int(profile.training["maximum_sequence_tokens"])
         )
-        encoded["labels"] = list(encoded["input_ids"])
-        return encoded
 
     dataset = Dataset.from_list(train_rows).map(tokenize, remove_columns=list(train_rows[0]))
+    validation_dataset = Dataset.from_list(validation_rows).map(
+        tokenize, remove_columns=list(validation_rows[0])
+    )
     output.mkdir(parents=True, exist_ok=True)
     (output / "RUN_INPUT.json").write_bytes(
         canonical_json({**run_input, "run_sha256": run_sha256}) + b"\n"
     )
-    arguments = TrainingArguments(
-        output_dir=str(output),
-        max_steps=max_steps,
-        per_device_train_batch_size=int(profile.training["micro_batch_size"]),
-        gradient_accumulation_steps=int(profile.training["gradient_accumulation_steps"]),
-        learning_rate=float(profile.training["learning_rate"]),
-        lr_scheduler_type=str(profile.training["scheduler"]),
-        warmup_ratio=float(profile.training["warmup_ratio"]),
-        optim=str(profile.training["optimizer"]),
-        bf16=True,
-        gradient_checkpointing=True,
-        save_steps=int(profile.training["checkpoint_steps"]),
-        logging_steps=1,
-        report_to=[],
-        seed=int(profile.training["seed"]),
-    )
+    arguments = TrainingArguments(**training_arguments(output, profile, max_steps))
     resume = select_resume_checkpoint(output, run_sha256)
 
     class BindCheckpointCallback(TrainerCallback):
@@ -172,6 +223,11 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
         model=model,
         args=arguments,
         train_dataset=dataset,
+        eval_dataset=validation_dataset,
+        data_collator=DataCollatorForSeq2Seq(
+            tokenizer=tokenizer, label_pad_token_id=-100, pad_to_multiple_of=8
+        ),
+        processing_class=tokenizer,
         callbacks=[BindCheckpointCallback()],
     )
     trainer.train(resume_from_checkpoint=str(resume) if resume else None)

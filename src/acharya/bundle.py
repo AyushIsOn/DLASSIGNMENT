@@ -21,6 +21,10 @@ from acharya.lightning import PreflightError, _preparation_state
 _TOP_LEVEL = {
     ".python-version",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "LIGHTNING_HANDOFF.md",
+    "DATASET_CARD.md",
+    ".gitleaks.toml",
     "README.md",
     "data/dataset V1.0.pdf",
     "pyproject.toml",
@@ -30,6 +34,7 @@ _PREFIXES = (
     ".github/",
     "AcharyaGPT(iOS)/",
     "configs/",
+    "data/curated/",
     "eval/",
     "prompts/",
     "scripts/",
@@ -117,11 +122,7 @@ def _copy_files(stage: Path, selected: list[tuple[Path, str]]) -> None:
 
 def _write_metadata(stage: Path, preparation: dict[str, object]) -> None:
     raw_inventory_path = (
-        stage
-        / "artifacts"
-        / "preparation"
-        / str(preparation["fingerprint"])
-        / "raw-inventory.json"
+        stage / "artifacts" / "preparation" / str(preparation["fingerprint"]) / "raw-inventory.json"
     )
     raw_inventory: object = []
     if raw_inventory_path.is_file():
@@ -152,16 +153,16 @@ def _write_metadata(stage: Path, preparation: dict[str, object]) -> None:
     }
     (state / "active_preparation.json").write_bytes(canonical_json(pointer_value) + b"\n")
     (state / "active_corpus.json").write_bytes(
-        canonical_json(
-            {"fingerprint": fingerprint, "path": f"data/processed/{fingerprint}"}
-        )
+        canonical_json({"fingerprint": fingerprint, "path": f"data/processed/{fingerprint}"})
         + b"\n"
     )
     (stage / "BOOTSTRAP.md").write_text(
         "# Lightning bootstrap\n\n"
-        "Verify this extraction with `python -m acharya.bundle validate --workspace $PWD`, "
-        "install with `uv sync --frozen --extra retrieval --extra training --group dev`, "
-        "then run `bash scripts/lightning_a100.sh --workspace $PWD --quote quote.json`. "
+        "Install with `uv sync --frozen --extra retrieval --extra training --group dev`, "
+        "then verify with `uv run python -m acharya.bundle validate --workspace $PWD`. "
+        "Then activate with `uv run python -m acharya.bundle activate --workspace $PWD` "
+        "and run `bash scripts/lightning_a100.sh --workspace $PWD --quote ../quote.json`. "
+        "Store the pricing quote outside the extracted project. "
         "Keep quote evidence, persistent storage, and auto-stop enabled. "
         "GPU training is optional.\n",
         encoding="utf-8",
@@ -200,9 +201,7 @@ def _archive(stage: Path, output: Path) -> None:
         compressor.stream_writer(destination, closefd=False) as compressed,
         tarfile.open(fileobj=compressed, mode="w|") as archive,
     ):
-        paths = sorted(
-            stage.rglob("*"), key=lambda item: item.relative_to(stage).as_posix()
-        )
+        paths = sorted(stage.rglob("*"), key=lambda item: item.relative_to(stage).as_posix())
         for path in paths:
             relative = path.relative_to(stage).as_posix()
             info = tarfile.TarInfo(relative + ("/" if path.is_dir() else ""))
@@ -250,7 +249,25 @@ def create(workspace: Path, fingerprint: str, output: Path) -> dict[str, object]
     }
 
 
-def validate(workspace: Path) -> dict[str, object]:
+def _runtime_file(name: str) -> bool:
+    parts = PurePosixPath(name).parts
+    return "__pycache__" in parts or name.startswith(
+        (
+            ".venv/",
+            ".pytest_cache/",
+            ".mypy_cache/",
+            ".ruff_cache/",
+            "artifacts/gates/",
+            "artifacts/external-run/",
+            "artifacts/model-cache/",
+            "artifacts/indexes/",
+            "artifacts/calibration/",
+            "artifacts/state/",
+        )
+    )
+
+
+def validate(workspace: Path, *, runtime: bool = False) -> dict[str, object]:
     manifest_path = workspace / "BUNDLE_MANIFEST.json"
     try:
         manifest: dict[str, Any] = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -263,6 +280,8 @@ def validate(workspace: Path) -> dict[str, object]:
         for path in workspace.rglob("*")
         if path.is_file() and path.name != "BUNDLE_MANIFEST.json"
     }
+    if runtime:
+        actual = {name for name in actual if name in expected or not _runtime_file(name)}
     if actual != set(expected):
         raise PreflightError("bundle extraction membership does not match its manifest")
     for relative, record in expected.items():
@@ -335,30 +354,8 @@ def validate_archive(archive: Path) -> dict[str, object]:
 
 
 def activate(workspace: Path) -> dict[str, object]:
-    """Relocate prepared-data pointers after integrity validation of a clean extraction."""
-    result = validate(workspace)
-    fingerprint = str(result["fingerprint"])
-    state = workspace / "artifacts" / "state"
-    def write_pointer(path: Path, value: object) -> None:
-        path.write_bytes(canonical_json(value) + b"\n")
-
-    write_pointer(
-        state / "active_preparation.json",
-        {
-            "fingerprint": fingerprint,
-            "processed_path": str((workspace / "data" / "processed" / fingerprint).resolve()),
-            "report_path": str(
-                (workspace / "artifacts" / "preparation" / fingerprint).resolve()
-            ),
-        },
-    )
-    write_pointer(
-        state / "active_corpus.json",
-        {
-            "fingerprint": fingerprint,
-            "path": str((workspace / "data" / "processed" / fingerprint).resolve()),
-        },
-    )
+    """Validate portable relative pointers without rewriting hash-bound bundle inputs."""
+    result = validate(workspace, runtime=True)
     return {**result, "activated": True}
 
 
@@ -383,7 +380,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "create":
         result = create(args.workspace.resolve(), args.fingerprint, args.output.resolve())
     elif args.command == "validate":
-        result = validate(args.workspace.resolve())
+        result = validate(args.workspace.resolve(), runtime=True)
     elif args.command == "validate-archive":
         result = validate_archive(args.archive.resolve())
     else:

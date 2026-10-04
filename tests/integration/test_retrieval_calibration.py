@@ -1,11 +1,27 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from acharya.config import Settings
 from acharya.ingest.pipeline import build_corpus
 from acharya.rag.evaluate import calibrate, load_calibration
 from acharya.rag.index import build_index
+
+
+def test_answerable_miss_remains_in_calibration_denominator(workspace_factory: object) -> None:
+    root = workspace_factory()  # type: ignore[operator]
+    settings = Settings.load(root)
+    build_corpus(settings)
+    index = build_index(settings, "bm25_only")
+    golden = root / "eval" / "golden.jsonl"
+    initial = calibrate(settings, index, golden=golden, activate=False)
+    with golden.open("a") as handle:
+        handle.write(json.dumps({"id": "known-miss", "kind": "answerable",
+                                 "query": "xqvzz absententity"}) + "\n")
+    result = calibrate(settings, index, golden=golden, activate=False)
+    assert result.answerable_count == initial.answerable_count + 1
+    assert result.answerable_supported == initial.answerable_supported
 
 
 class FakeEncoder:

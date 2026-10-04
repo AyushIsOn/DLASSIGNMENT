@@ -50,7 +50,11 @@ class OllamaProvider:
                 "model": self.model,
                 "prompt": request.prompt.text,
                 "stream": False,
-                "options": {"temperature": 0, "num_predict": request.prompt.output_tokens},
+                "options": {
+                    "temperature": 0,
+                    "num_predict": request.prompt.output_tokens,
+                    "num_ctx": self.context_window_tokens,
+                },
             },
             ensure_ascii=False,
             separators=(",", ":"),

@@ -1,0 +1,7 @@
+Ayurveda describes the three doshas as Vata, Pitta and Kapha. The three doshas are traditional functional principles: Vata is associated with movement, Pitta with transformation, and Kapha with cohesion and nourishment. This is a description of Ayurvedic theory, not a biomedical diagnosis or treatment recommendation.
+
+In the Ayusoft explanation, Vata is associated with movement and functions such as respiration, speech and propulsion. Pitta is associated with transformation processes including digestion and metabolism. Kapha is associated with moistening, nourishment and stability. The three are described as present throughout the body, with different primary locations and functions.
+
+The Directorate of AYUSH, Government of the National Capital Territory of Delhi, describes health in Ayurvedic terms as a state involving balanced dosha, agni, dhatu and mala together with sound mind and sense organs. Its educational material presents Vata, Pitta and Kapha as metaphysiological concepts in Ayurvedic theory. These statements describe a traditional framework and should not be used alone to diagnose a person.
+
+Ayusoft explains that prakriti refers to an individual's constitutional pattern in Ayurvedic theory. It lists single and combined patterns involving Vata, Pitta and Kapha. A conversational system should present these as traditional concepts, avoid inferring a user's constitution from a short symptom description, and direct health concerns to a qualified clinician.
