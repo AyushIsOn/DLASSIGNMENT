@@ -14,7 +14,33 @@ if [[ "$MODE" == cpu ]]; then
   "$PYTHON" -u -m acharya.cli evaluate --workspace "$WORKSPACE" \
     --retrieval-mode full --golden "$WORKSPACE/eval/golden.jsonl" --activate-calibration
   "$PYTHON" -u -m acharya.cli calibrate-support --workspace "$WORKSPACE"
-  echo 'CPU recalibration complete. GPU acceptance is still required.'
+  "$PYTHON" -u - "$WORKSPACE" <<'PYCPU'
+import json
+import sys
+from pathlib import Path
+from acharya.rag.service import RAGService
+from acharya.schemas import ChatRequest
+
+workspace = Path(sys.argv[1])
+service = RAGService(workspace)
+cases = [json.loads(line) for line in (workspace / "eval/acceptance.jsonl").read_text().splitlines() if line.strip()]
+records = []
+for case in cases:
+    response = service.chat(ChatRequest(message=case["query"], history=[]))
+    passed = (
+        response.outcome == case["outcome"]
+        and all(term.casefold() in response.answer.casefold() for term in case["required_terms"])
+        and (case["outcome"] != "answered" or bool(response.citations))
+    )
+    records.append({"id": case["id"], "passed": passed, "response": response.model_dump(mode="json")})
+    print(json.dumps({"case": case["id"], "passed": passed}), flush=True)
+output = workspace / "artifacts/external-run/evaluation/retrieval-repair.json"
+output.parent.mkdir(parents=True, exist_ok=True)
+output.write_text(json.dumps(records, indent=2))
+if not all(row["passed"] for row in records):
+    raise SystemExit(f"CPU retrieval checks failed; keep GPU off. Inspect {output}")
+print("CPU retrieval checks passed. GPU generation acceptance is still required.")
+PYCPU
 elif [[ "$MODE" == gpu ]]; then
   "$PYTHON" -u -m training.acceptance --workspace "$WORKSPACE" \
     --adapter "$WORKSPACE/artifacts/external-run/adapter" \
