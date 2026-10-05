@@ -76,13 +76,25 @@ def parse_generated_claims(text: str) -> tuple[GeneratedClaim, ...]:
         clean_line = _LIST_PREFIX.sub("", line.strip())
         if not clean_line:
             continue
+        # A paragraph-final citation scopes every sentence in that paragraph.
+        # Each inherited claim is still independently checked for entailment.
+        trailing = re.search(r"((?:\[\d+\]\s*)+)[.!?]?$", clean_line)
+        paragraph_citations = (
+            tuple(int(item) for item in _CITATION.findall(trailing.group(1)))
+            if trailing else ()
+        )
         for sentence in _SENTENCE.split(clean_line):
             sentence = sentence.strip()
             if not sentence:
                 continue
-            citations = tuple(int(item) for item in _CITATION.findall(sentence))
+            citations = (
+                tuple(int(item) for item in _CITATION.findall(sentence))
+                or paragraph_citations
+            )
             hypothesis = _CITATION.sub("", sentence).strip()
             hypothesis = re.sub(r"\s+([.!?])", r"\1", hypothesis).strip()
+            if not hypothesis and citations:
+                continue
             if not citations or not re.search(r"[A-Za-z]", hypothesis):
                 raise GroundingError("substantive claim lacks a citation")
             if "[" in hypothesis or "]" in hypothesis or any(number < 1 for number in citations):

@@ -112,6 +112,14 @@ def retrieve(
     for position in union:
         _, score, coverage, overlap, lexical_support = lexical[position]
         dense_score = dense_scores[position]
+        # Dense similarity and lexical coverage are alternative evidence routes.
+        # Both still require a lexical anchor and raw BM25 floor in full mode.
+        anchor = (
+            thresholds is not None
+            and positive_query_idf > 0
+            and overlap >= (1 if len(informative) == 1 else thresholds.minimum_overlap)
+            and score >= thresholds.raw_score
+        )
         dense_support = (
             thresholds is not None
             and thresholds.dense_score is not None
@@ -127,7 +135,10 @@ def retrieve(
                 positive_query_idf,
                 coverage,
                 overlap,
-                bool(lexical_support and dense_support),
+                bool(
+                    anchor and (lexical_support or dense_support)
+                    if index.mode == "full" else lexical_support and dense_support
+                ),
                 dense_score,
                 None,
                 rrf,

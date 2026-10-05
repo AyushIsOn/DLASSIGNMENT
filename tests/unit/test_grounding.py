@@ -62,3 +62,25 @@ def test_generated_claims_require_cited_entailment_and_reject_whole(project_root
         parse_generated_claims("Unsupported sentence without evidence.")
     with pytest.raises(GroundingError, match="malformed"):
         parse_generated_claims("| claim | citation |\n| --- | --- |")
+
+
+def test_paragraph_citation_scopes_each_claim_without_crossing_paragraphs() -> None:
+    claims = parse_generated_claims("Vata concerns movement. Kapha concerns nourishment. [1]")
+    assert len(claims) == 2
+    assert all(claim.citation_numbers == (1,) for claim in claims)
+    with pytest.raises(GroundingError, match="lacks a citation"):
+        parse_generated_claims("Uncited claim.\n\nCited claim [1]")
+
+
+def test_inherited_citations_still_require_entailment_for_every_claim(project_root: Path) -> None:
+    policy = SafetyPolicy.load(project_root / "configs/safety.yaml")
+    context = ProviderContext("one", "fixture", 1, "q", "Vata concerns movement.", "educational")
+    prompt = RenderedPrompt("p", b"p", 1, 64, (context,))
+
+    class SelectiveScorer:
+        def score(self, premises: tuple[str, ...], hypothesis: str) -> float:
+            return 0.99 if hypothesis == "Vata concerns movement." else 0.0
+
+    result = ProviderResult("Vata concerns movement. Kapha cures diabetes. [1]", (), "fake")
+    with pytest.raises(GroundingError):
+        validate_generated_result(result, prompt, policy, SelectiveScorer(), 0.8)
