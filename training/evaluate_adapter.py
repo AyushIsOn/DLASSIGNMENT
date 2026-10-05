@@ -152,6 +152,14 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
         "records": records,
         "adversarial_cases": adversarial_records,
         "quality_gain_claimed": False,
+        "exact_reference_copy_count": sum(
+            record["adapter_answer"] == record["reference"] for record in records
+        ),
+        "evaluation_limitations": [
+            "References are extractive targets supplied in the prompt context.",
+            "Exact copying is task compliance, not demonstrated understanding or clinical quality.",
+            "Independent explanatory QA and OCR review are required before another training run.",
+        ],
         "quality_metric": "reference_token_f1: surface overlap only; requires human review",
         "mean_adapter_reference_token_f1": sum(
             float(str(record["adapter_reference_token_f1"])) for record in records

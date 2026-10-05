@@ -238,7 +238,11 @@ class RAGService:
                     calibration.threshold,
                 )
                 return result.text, citations
-            except (GroundingError, ProviderError, OSError, ValueError, RuntimeError):
+            except (GroundingError, ProviderError, OSError, ValueError, RuntimeError) as error:
+                # No question, context or candidate text is emitted into logs.
+                reason = str(error) if isinstance(error, GroundingError) else type(error).__name__
+                print(json.dumps({"event": "generation_rejected", "attempt": attempt + 1,
+                                  "reason": reason}), flush=True)
                 continue
         return None
 
