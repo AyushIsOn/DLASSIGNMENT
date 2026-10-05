@@ -76,8 +76,11 @@ def _split(chunk: Chunk) -> str:
 
 
 def _complete_sft(
-    records: list[SourceRecord], policy: SafetyPolicy, sources: set[str],
-    threshold: float, shingle_words: int,
+    records: list[SourceRecord],
+    policy: SafetyPolicy,
+    sources: set[str],
+    threshold: float,
+    shingle_words: int,
 ) -> tuple[tuple[Chunk, ...], tuple[DuplicateComponent, ...]]:
     # Retrieval windows are not independent answers. Apply policy to the whole
     # answer and create one training example per source record before deduplication.
@@ -85,19 +88,37 @@ def _complete_sft(
     maximum = max((len(record.answer.split()) for record in selected), default=1)
     complete = make_chunks(selected, policy, max(maximum, 1), 0)
     eligible = tuple(
-        item for item in complete
+        item
+        for item in complete
         if policy.role_allowed(item.role) and policy.candidate_allowed(item.text)
     )
     return deduplicate(eligible, threshold, shingle_words)
 
 
-def _sft_row(chunk: Chunk) -> dict[str, object]:
+def _sft_row(chunk: Chunk, system: str | None = None) -> dict[str, object]:
+    messages = [
+        {"role": "user", "content": chunk.question},
+        {"role": "assistant", "content": chunk.text},
+    ]
+    if system:
+        user = (
+            f"HISTORY:\n(none)\n\nCONTEXTS:\n[1] source={chunk.source} page={chunk.page}\n"
+            f"{chunk.text}\n\nQUESTION:\n{chunk.question}\n\nANSWER:\n"
+        )
+        historical = chunk.source.startswith("public_domain")
+        answer = ("The historical passage states: " if historical else "") + chunk.text + " [1]"
+        messages = [
+            {"role": "system", "content": system.rstrip()},
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": answer},
+        ]
     return {
         "id": chunk.chunk_id,
-        "messages": [
-            {"role": "user", "content": chunk.question},
-            {"role": "assistant", "content": chunk.text},
-        ],
+        "messages": messages,
+        "question": chunk.question,
+        "task_type": "historical_extraction"
+        if chunk.source.startswith("public_domain")
+        else "grounded_qa",
         "provenance": {
             "dataset": chunk.source,
             "version": chunk.dataset_version,
@@ -199,10 +220,16 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         tuple(records), policy, int(chunking["max_words"]), int(chunking["overlap_words"])
     )
     quarantined = set(settings.datasets.get("quarantined_sources", {}))
-    role_rejected = tuple(item for item in all_chunks
-                          if not policy.role_allowed(item.role) or item.source in quarantined)
-    eligible = tuple(item for item in all_chunks
-                     if policy.role_allowed(item.role) and item.source not in quarantined)
+    role_rejected = tuple(
+        item
+        for item in all_chunks
+        if not policy.role_allowed(item.role) or item.source in quarantined
+    )
+    eligible = tuple(
+        item
+        for item in all_chunks
+        if policy.role_allowed(item.role) and item.source not in quarantined
+    )
     dedupe = settings.ingestion["dedupe"]
     unique, components = deduplicate(
         eligible, float(dedupe["jaccard_threshold"]), int(dedupe["shingle_words"])
@@ -223,15 +250,60 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
     if not sft_sources:
         sft_sources = set(configured) | {"bundled_pdf"}
     sft_chunks, sft_components = _complete_sft(
-        records, policy, sft_sources - quarantined,
-        float(dedupe["jaccard_threshold"]), int(dedupe["shingle_words"]),
+        records,
+        policy,
+        sft_sources - quarantined,
+        float(dedupe["jaccard_threshold"]),
+        int(dedupe["shingle_words"]),
     )
+    grounding = settings.datasets.get("grounded_training", {})
+    historical_sources = set(grounding.get("historical_sources", ()))
+    historical_records = []
+    excluded = re.compile(
+        r"\b(dosage|dose|administer|prescrib|cure|treatment|operation|incision|"
+        r"mercury|arsenic|poison|vomit|emetic|purgative|enema|bleeding)\w*\b",
+        re.I,
+    )
+    educational = re.compile(
+        r"\b(dosha|vata|pitta|kapha|dhatu|ayurveda|anatomy|physiology|"
+        r"tissue|sense|element|constitution|digestion|agni|rasa|susruta|sushruta)\w*\b",
+        re.I,
+    )
+    for record in records:
+        words = record.answer.split()
+        if (
+            record.source in historical_sources
+            and int(grounding.get("minimum_words", 35))
+            <= len(words)
+            <= int(grounding.get("maximum_words", 180))
+            and educational.search(record.answer)
+            and not excluded.search(record.answer)
+            and sum(c.isalpha() or c.isspace() for c in record.answer) / len(record.answer) > 0.90
+        ):
+            historical_records.append(record)
+    historical_records.sort(key=lambda record: sha256_bytes(record.provenance.encode()))
+    historical_records = historical_records[
+        : int(grounding.get("maximum_historical_records", 3000))
+    ]
+    historical, _ = _complete_sft(
+        historical_records,
+        policy,
+        historical_sources,
+        float(dedupe["jaccard_threshold"]),
+        int(dedupe["shingle_words"]),
+    )
+    sft_chunks, sft_components = deduplicate(
+        tuple([*sft_chunks, *historical]),
+        float(dedupe["jaccard_threshold"]),
+        int(dedupe["shingle_words"]),
+    )
+    system = (settings.workspace / "prompts/grounded_v1.txt").read_text()
     split_rows: dict[str, list[dict[str, object]]] = {"train": [], "validation": [], "test": []}
     split_ids: dict[str, set[str]] = {"train": set(), "validation": set(), "test": set()}
     split_questions: dict[str, set[str]] = {key: set() for key in split_ids}
     for chunk in sft_chunks:
         split = _split(chunk)
-        split_rows[split].append(_sft_row(chunk))
+        split_rows[split].append(_sft_row(chunk, system))
         split_ids[split].add(chunk.chunk_id)
         split_questions[split].add(_question_key(chunk.question))
     if any(not rows for rows in split_rows.values()):
@@ -289,8 +361,9 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
         for dataset_id, result in sorted(loaded.items())
     }
     fingerprint_input = {
-        "schema_version": 4,
+        "schema_version": 5,
         "config_sha256": settings.config_hash("ingestion", "safety", "datasets"),
+        "system_prompt_sha256": sha256_bytes(system.encode()),
         "raw_inventory": inventory,
         "chunks": chunks,
         "duplicates": [item.as_dict() for item in components],
@@ -333,16 +406,19 @@ def prepare(settings: Settings, acquisitions: tuple[Acquisition, ...]) -> Prepar
             },
         )
         _json(report_stage / "duplicate-components.json", [item.as_dict() for item in components])
-        _json(report_stage / "sft-duplicate-components.json",
-              [item.as_dict() for item in sft_components])
+        _json(
+            report_stage / "sft-duplicate-components.json",
+            [item.as_dict() for item in sft_components],
+        )
         _json(
             report_stage / "split-report.json",
             {
                 "counts": {key: len(value) for key, value in split_rows.items()},
                 "ids": {key: sorted(value) for key, value in split_ids.items()},
                 "split_unit": "normalized_question_after_full_answer_deduplication",
-                "normalized_question_counts": {key: len(value)
-                                               for key, value in split_questions.items()},
+                "normalized_question_counts": {
+                    key: len(value) for key, value in split_questions.items()
+                },
                 "cross_split_id_overlap": 0,
                 "cross_split_normalized_question_overlap": 0,
                 "semantic_topic_overlap_audited": False,

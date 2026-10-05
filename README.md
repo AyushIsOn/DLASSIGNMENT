@@ -1,6 +1,6 @@
 # AcharyaGPT
 
-Offline-first Ayurvedic knowledge retrieval with deterministic ingestion, calibrated BM25/dense/reranked retrieval, cited extractive answers, medical-safety abstention, an iOS client, optional support-verified generation, and an optional external QLoRA workflow.
+Offline-first Ayurvedic knowledge retrieval with deterministic ingestion, calibrated BM25/dense/reranked retrieval, cited extractive answers, medical-safety abstention, an iOS client, optional support-verified generation, and an external A100 80 GB BF16 LoRA workflow.
 
 This is educational software, not medical advice. It must abstain or return its fixed safety response for urgent, diagnostic, personalized-treatment, and dose requests.
 
@@ -25,11 +25,11 @@ For the prepared archive and exact Lightning steps, see [LIGHTNING_HANDOFF.md](L
 
 The strict Gate B preparation requires these exact versions:
 
-- [MedQuAD `gpreda/medquad/1`](https://www.kaggle.com/datasets/gpreda/medquad), upstream CC BY 4.0; the mirror’s Apache 2.0 label differs. See `THIRD_PARTY_NOTICES.md`.
+- MedQuAD is acquired for reproducibility but quarantined from the active Ayurveda-only corpus.
 - [Ayurvedic Knowledge Dataset `akashkumarpr/ayurvedic-knowledge-dataset/1`](https://www.kaggle.com/datasets/akashkumarpr/ayurvedic-knowledge-dataset), license and required credit recorded in configuration and output attribution.
 - [Ayurveda Healthcare Dataset `aliainaanraza/ayurveda-healthcare-dataset/2`](https://www.kaggle.com/datasets/aliainaanraza/ayurveda-healthcare-dataset), downloaded for audit but quarantined from retrieval and SFT after quality inspection.
 - [AyurGenixAI `kagglekirti123/ayurgenixai-ayurvedic-dataset/1`](https://www.kaggle.com/datasets/kagglekirti123/ayurgenixai-ayurvedic-dataset), CC BY 4.0.
-- [Sushruta Samhita (1907)](https://archive.org/details/englishtranslati00susruoft), public-domain historical OCR for retrieval.
+- Sushruta Samhita volumes I (1907), II (1911) and III (1916), public-domain historical English OCR for retrieval and filtered grounded extraction training.
 - Four project-authored paraphrases of AYUSH educational pages, committed under `data/curated/`.
 
 See [DATASET_CARD.md](DATASET_CARD.md) for measured counts, sample structure, filtering and limitations. Public supplemental sources are downloaded and hash-verified during strict preparation; original Kaggle sources use the authenticated CLI or verified cache.
@@ -98,25 +98,15 @@ uv run python -m acharya.bundle validate-archive --archive "$PWD/dist/lightning/
 
 Copy only that archive and independent quote evidence to persistent Lightning storage, clean-extract it, run `python -m acharya.bundle validate --workspace "$PWD"`, then follow `BOOTSTRAP.md`.
 
-## Optional Gate C QLoRA
+## H200 / A100 training and recovery
 
-`configs/qlora.yaml` locks Qwen2.5-7B-Instruct revision `a09a35458c702b33eeacc393d103063234e8bc28`, all four weight hashes, NF4 double quantization, bf16 compute, LoRA rank 16, 1,536 tokens, and effective batch 16. A 7B bf16 base is roughly 14 GB, while full AdamW weights, gradients, fp32 master weights, and moments exceed 80 GB before activations/checkpoints. Full tuning therefore cannot fit one A100 40 GB and is never an implicit fallback. Reversible QLoRA is expected to profile around 22–32 GB VRAM.
-
-Local CPU verification performs exactly five no-save optimizer steps and records no training claim:
-
-```bash
-uv run python -m acharya.lightning preflight --workspace "$PWD" --cpu-only-dry-run
-uv run python -m acharya.lightning fake-run --steps 100
-```
-
-The external workflow requires exactly one A100 with at least 39 GiB VRAM, completed strict preparation, clean bundle hashes, persistent storage, auto-stop, and JSON quote evidence with `credits_per_hour`, `currency_per_credit`, `currency`, `quoted_at_utc`, and startup/training/evaluation-export minute projections. It aborts before model load above 10 credits or 240 minutes and enforces the documented 10/30/20/45/45/30/45-minute stage ceilings.
-
-```bash
-export ACHARYA_PERSISTENT_STORAGE=1 ACHARYA_AUTO_STOP=1
-bash scripts/lightning_a100.sh --workspace "$PWD" --quote ../quote.json --train-steps 100
-```
-
-The script verifies integrity, acquires and hashes the model, runs a 5-step GPU smoke and real 100-optimizer-step profile, resumes only hash-bound checkpoints, evaluates held-out/adversarial/safety rows, atomically exports the adapter, optionally merges bf16 with `--merge`, and runs support-gated PEFT RAG smoke. Gate C becomes `COMPLETED` only when checkpoint state, adapter config/weights/tokenizer/base revision, manifests/file hashes, evaluation, and PEFT serving evidence all validate. Scripts, CPU checks, and fake runners leave it `PENDING_EXTERNAL_GPU`; no tuned-serving or quality-gain claim is made.
+The prepared version uses Qwen3-8B with BF16 LoRA, a two-pass maximum and a seven-hour
+session budget (up to eight with `--hours 8`). The H200 wrapper supports two–three
+hour sessions, a 60-minute evaluation reserve and a measured-budget gate. It includes live logs, complete portable
+checkpoints, full RAG and pre-iOS API acceptance tests. Prepare downloads/indexing on
+CPU first; follow [LIGHTNING_HANDOFF.md](LIGHTNING_HANDOFF.md) for exact commands,
+account-transfer recovery, expected results and limitations. GPU training and
+clinical quality remain unverified until the external run and review complete.
 
 ## Independent gates and security
 

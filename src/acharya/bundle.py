@@ -161,9 +161,9 @@ def _write_metadata(stage: Path, preparation: dict[str, object]) -> None:
         "Install with `uv sync --frozen --extra retrieval --extra training --group dev`, "
         "then verify with `uv run python -m acharya.bundle validate --workspace $PWD`. "
         "Then activate with `uv run python -m acharya.bundle activate --workspace $PWD` "
-        "and run `bash scripts/lightning_a100.sh --workspace $PWD --quote ../quote.json`. "
+        "then follow LIGHTNING_HANDOFF.md for CPU preparation and the A100 80 GB run. "
         "Store the pricing quote outside the extracted project. "
-        "Keep quote evidence, persistent storage, and auto-stop enabled. "
+        "Keep persistent storage and platform auto-stop enabled. "
         "GPU training is optional.\n",
         encoding="utf-8",
     )
@@ -254,6 +254,7 @@ def _runtime_file(name: str) -> bool:
     return "__pycache__" in parts or name.startswith(
         (
             ".venv/",
+            ".cache/huggingface/",
             ".pytest_cache/",
             ".mypy_cache/",
             ".ruff_cache/",

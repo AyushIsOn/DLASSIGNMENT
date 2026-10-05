@@ -25,7 +25,6 @@ retrieval = [
 ]
 training = [
   "accelerate==1.7.0",
-  "bitsandbytes==0.46.0; platform_system == 'Linux'",
   "datasets==3.6.0",
   "peft==0.15.2",
 ]

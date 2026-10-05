@@ -17,27 +17,16 @@ def smoke(workspace: Path, adapter: Path, output: Path) -> dict[str, object]:
     manifest = adapter / "ADAPTER_MANIFEST.json"
     if not manifest.is_file():
         raise PreflightError("adapter manifest is required for PEFT RAG smoke")
-    import torch
-    from peft import AutoPeftModelForCausalLM
-    from transformers import AutoTokenizer
+    from training.runtime import make_generator
 
-    if not torch.cuda.is_available():
-        raise PreflightError("PEFT RAG smoke requires CUDA")
-    tokenizer = AutoTokenizer.from_pretrained(adapter, trust_remote_code=False)
-    model = AutoPeftModelForCausalLM.from_pretrained(
-        adapter, torch_dtype=torch.bfloat16, device_map={"": 0}, trust_remote_code=False
-    )
+    actual_generate = make_generator(workspace, adapter)
     invocations = 0
     generated_answer_hashes: list[str] = []
 
     def generate(prompt: str, output_tokens: int) -> str:
         nonlocal invocations
         invocations += 1
-        encoded = tokenizer(prompt, return_tensors="pt", truncation=True).to(model.device)
-        generated = model.generate(**encoded, max_new_tokens=output_tokens, do_sample=False)
-        answer = tokenizer.decode(
-            generated[0][encoded["input_ids"].shape[1] :], skip_special_tokens=True
-        )
+        answer = actual_generate(prompt, output_tokens)
         generated_answer_hashes.append(sha256_bytes(answer.encode()))
         return answer
 

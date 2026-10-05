@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from acharya.lightning import LOCKED_REVISION, PreflightError, QLoRAProfile
+from acharya.rag.prompt import grounded_chat_messages
 from training.train_qlora import _verify_model_snapshot
 
 
@@ -37,8 +38,9 @@ def make_generator(workspace: Path, adapter: Path) -> Callable[[str, int], str]:
             model = PeftModel.from_pretrained(base, adapter, local_files_only=True)
             model.eval()
         chat = tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt}],
+            grounded_chat_messages(prompt),
             tokenize=False,
+            enable_thinking=False,
             add_generation_prompt=True,
         )
         encoded = tokenizer(chat, return_tensors="pt", add_special_tokens=False).to(model.device)

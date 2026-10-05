@@ -170,6 +170,9 @@ def test_runtime_activation_preserves_manifest_and_rejects_source_tampering(
     (extracted / "artifacts" / "gates").mkdir()
     (extracted / "artifacts" / "gates" / "gate-c.json").write_text("{}")
     assert bundle.activate(extracted)["activated"] is True
+    cache = extracted / ".cache/huggingface/models--fixture/snapshots/revision"
+    cache.mkdir(parents=True)
+    (cache / "model.safetensors").write_bytes(b"runtime model cache")
     assert bundle.activate(extracted)["activated"] is True
     verify_bundle(extracted)
     (extracted / "pyproject.toml").write_text("tampered")

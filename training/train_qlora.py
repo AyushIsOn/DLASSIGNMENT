@@ -1,9 +1,12 @@
-"""External-only Qwen2.5 QLoRA training entry point."""
+"""External-only Qwen3 BF16 LoRA training entry point."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import signal
+import time
 from pathlib import Path
 from typing import Any, cast
 
@@ -40,13 +43,14 @@ def _tokenize_chat_row(
     messages = row["messages"]
     if (
         not isinstance(messages, list)
-        or [item.get("role") for item in messages] != ["user", "assistant"]
+        or [item.get("role") for item in messages]
+        not in (["user", "assistant"], ["system", "user", "assistant"])
         or any(not str(item.get("content", "")).strip() for item in messages)
     ):
         raise PreflightError("training row needs one nonempty user and assistant turn")
-    text = tokenizer.apply_chat_template(messages, tokenize=False)
+    text = tokenizer.apply_chat_template(messages, tokenize=False, enable_thinking=False)
     prompt = tokenizer.apply_chat_template(
-        messages[:-1], tokenize=False, add_generation_prompt=True
+        messages[:-1], tokenize=False, add_generation_prompt=True, enable_thinking=False
     )
     encoded = tokenizer(
         text,
@@ -57,7 +61,7 @@ def _tokenize_chat_row(
     input_ids = list(encoded["input_ids"])
     if len(input_ids) > maximum_sequence_tokens:
         raise PreflightError("complete training example exceeds maximum sequence length")
-    if input_ids[:len(prompt_ids)] != list(prompt_ids):
+    if input_ids[: len(prompt_ids)] != list(prompt_ids):
         raise PreflightError("chat template generation prefix does not match training text")
     prefix_length = len(prompt_ids)
     labels = [-100] * prefix_length + input_ids[prefix_length:]
@@ -119,6 +123,15 @@ def training_arguments(output: Path, profile: QLoRAProfile, max_steps: int) -> d
         prediction_loss_only=True,
         logging_steps=1,
         report_to=[],
+        save_total_limit=int(profile.training["save_total_limit"]),
+        load_best_model_at_end=True,
+        restore_callback_states_from_checkpoint=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
+        logging_first_step=True,
+        log_level="info",
+        disable_tqdm=False,
+        save_safetensors=True,
         seed=int(profile.training["seed"]),
     )
 
@@ -128,9 +141,7 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
     if max_steps < 1:
         raise PreflightError("max steps must be positive")
     pointer = json.loads(
-        (workspace / "artifacts" / "state" / "active_preparation.json").read_text(
-            encoding="utf-8"
-        )
+        (workspace / "artifacts" / "state" / "active_preparation.json").read_text(encoding="utf-8")
     )
     processed = Path(str(pointer["processed_path"]))
     if not processed.is_absolute():
@@ -143,42 +154,39 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
         "preparation_fingerprint": pointer["fingerprint"],
         "train_sha256": sha256_file(processed / "train.jsonl"),
         "validation_sha256": sha256_file(processed / "validation.jsonl"),
+        "planned_max_steps": max_steps,
         "training_code_sha256": sha256_file(Path(__file__)),
     }
     run_sha256 = sha256_bytes(canonical_json(run_input))
 
     import torch
     from datasets import Dataset
-    from peft import LoraConfig, prepare_model_for_kbit_training
+    from peft import LoraConfig
     from transformers import (
         AutoModelForCausalLM,
         AutoTokenizer,
-        BitsAndBytesConfig,
         DataCollatorForSeq2Seq,
+        EarlyStoppingCallback,
         Trainer,
         TrainerCallback,
+        TrainerState,
         TrainingArguments,
     )
 
     if not torch.cuda.is_available():
-        raise PreflightError("real QLoRA training requires CUDA")
+        raise PreflightError("real BF16 LoRA training requires CUDA")
     snapshot = workspace / "artifacts" / "model-cache" / LOCKED_REVISION
     _verify_model_snapshot(profile, snapshot)
     tokenizer = AutoTokenizer.from_pretrained(snapshot, trust_remote_code=False)
-    quantization = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
-    )
     model = AutoModelForCausalLM.from_pretrained(
         snapshot,
-        quantization_config=quantization,
         torch_dtype=torch.bfloat16,
         trust_remote_code=False,
+        local_files_only=True,
+        attn_implementation="sdpa",
         device_map={"": 0},
     )
-    model = prepare_model_for_kbit_training(model)
+    model.enable_input_require_grads()
     lora = profile.value["lora"]
     peft_config = LoraConfig(
         r=int(lora["rank"]),
@@ -196,9 +204,7 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
     model.peft_config["default"].revision = LOCKED_REVISION
 
     def tokenize(row: dict[str, Any]) -> dict[str, Any]:
-        return _tokenize_chat_row(
-            row, tokenizer, int(profile.training["maximum_sequence_tokens"])
-        )
+        return _tokenize_chat_row(row, tokenizer, int(profile.training["maximum_sequence_tokens"]))
 
     dataset = Dataset.from_list(train_rows).map(tokenize, remove_columns=list(train_rows[0]))
     validation_dataset = Dataset.from_list(validation_rows).map(
@@ -211,13 +217,61 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
     arguments = TrainingArguments(**training_arguments(output, profile, max_steps))
     resume = select_resume_checkpoint(output, run_sha256)
 
+    from acharya.checkpoints import pack, seal
+
+    stop_requested = False
+    started = time.monotonic()
+    deadline_seconds = float(os.environ.get("ACHARYA_TRAIN_SECONDS", "21600"))
+    if "ACHARYA_TRAIN_DEADLINE_UNIX" in os.environ:
+        deadline_seconds = min(
+            deadline_seconds,
+            max(0.0, float(os.environ["ACHARYA_TRAIN_DEADLINE_UNIX"]) - time.time()),
+        )
+
+    def request_stop(_signum: int, _frame: Any) -> None:
+        nonlocal stop_requested
+        stop_requested = True
+
+    signal.signal(signal.SIGTERM, request_stop)
+    signal.signal(signal.SIGINT, request_stop)
+
     class BindCheckpointCallback(TrainerCallback):
+        last_saved = time.monotonic()
+
+        def on_step_end(self, _args: Any, _state: Any, control: Any, **_kwargs: Any) -> None:
+            nonlocal stop_requested
+            if time.monotonic() - started >= deadline_seconds:
+                stop_requested = True
+            if stop_requested or time.monotonic() - self.last_saved >= 180:
+                control.should_save = True
+            if stop_requested:
+                control.should_training_stop = True
+
+        def on_log(
+            self, _args: Any, state: Any, _control: Any, logs: Any = None, **_kwargs: Any
+        ) -> None:
+            event = {
+                "step": state.global_step,
+                "elapsed_seconds": time.monotonic() - started,
+                "cuda_allocated_gib": torch.cuda.memory_allocated() / 2**30,
+                "cuda_peak_gib": torch.cuda.max_memory_allocated() / 2**30,
+                **(logs or {}),
+            }
+            with (output / "metrics.jsonl").open("a") as handle:
+                handle.write(json.dumps(event) + "\n")
+            print(json.dumps(event), flush=True)
+
         def on_save(self, _args: Any, state: Any, _control: Any, **_kwargs: Any) -> None:
             checkpoint = output / f"checkpoint-{int(state.global_step)}"
             if checkpoint.is_dir():
                 (checkpoint / "RUN_INPUT.json").write_bytes(
-                    canonical_json({"run_sha256": run_sha256}) + b"\n"
+                    canonical_json({**run_input, "run_sha256": run_sha256}) + b"\n"
                 )
+
+                seal(checkpoint)
+                recovery = pack(workspace, checkpoint, output / "recovery-latest.tar")
+                print(json.dumps({"recovery_checkpoint": recovery}), flush=True)
+                self.last_saved = time.monotonic()
 
     trainer = Trainer(
         model=model,
@@ -228,9 +282,61 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
             tokenizer=tokenizer, label_pad_token_id=-100, pad_to_multiple_of=8
         ),
         processing_class=tokenizer,
-        callbacks=[BindCheckpointCallback()],
+        callbacks=[
+            BindCheckpointCallback(),
+            EarlyStoppingCallback(
+                early_stopping_patience=int(profile.training["early_stopping_patience"])
+            ),
+        ],
     )
-    trainer.train(resume_from_checkpoint=str(resume) if resume else None)
+    if resume is None and any(output.glob("checkpoint-*")):
+        raise PreflightError(
+            "existing checkpoints do not match or are incomplete; use a new run folder"
+        )
+    print(
+        json.dumps(
+            {
+                "resume_from": str(resume) if resume else None,
+                "target_steps": max_steps,
+                "train_rows": len(train_rows),
+                "method": "bf16_lora",
+                "trainable_parameters": model.get_nb_trainable_parameters(),
+            }
+        ),
+        flush=True,
+    )
+    completed = False
+    if resume:
+        saved = json.loads((resume / "trainer_state.json").read_text())
+        early = saved.get("stateful_callbacks", {}).get("EarlyStoppingCallback", {})
+        patience_used = early.get("attributes", {}).get("early_stopping_patience_counter", 0)
+        completed = int(saved["global_step"]) >= max_steps or int(patience_used) >= int(
+            profile.training["early_stopping_patience"]
+        )
+    if completed:
+        # A transfer after the final optimizer step must not perform an extra step.
+        trainer.state = TrainerState.load_from_json(str(resume / "trainer_state.json"))
+        trainer._load_from_checkpoint(str(resume))
+        if trainer.state.best_model_checkpoint:
+            trainer._load_best_model()
+        metrics = {"resumed_completed_checkpoint": True}
+    else:
+        result = trainer.train(resume_from_checkpoint=str(resume) if resume else None)
+        metrics = result.metrics
+    (output / "train_metrics.json").write_bytes(
+        canonical_json(
+            {
+                **metrics,
+                "global_step": trainer.state.global_step,
+                "paused": stop_requested,
+                "best_checkpoint": trainer.state.best_model_checkpoint,
+                "best_validation_loss": trainer.state.best_metric,
+            }
+        )
+        + b"\n"
+    )
+    if stop_requested:
+        raise SystemExit(75)
     trainer.save_state()
     model.save_pretrained(output / "adapter", safe_serialization=True)
     tokenizer.save_pretrained(output / "adapter")

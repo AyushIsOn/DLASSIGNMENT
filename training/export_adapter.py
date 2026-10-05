@@ -42,9 +42,10 @@ def export_adapter(workspace: Path, source: Path, destination: Path) -> dict[str
         (stage / "ADAPTER_MANIFEST.json").write_bytes(canonical_json(manifest) + b"\n")
         if destination.exists():
             existing_manifest = destination / "ADAPTER_MANIFEST.json"
-            if existing_manifest.is_file() and existing_manifest.read_bytes() == (
-                stage / "ADAPTER_MANIFEST.json"
-            ).read_bytes():
+            if (
+                existing_manifest.is_file()
+                and existing_manifest.read_bytes() == (stage / "ADAPTER_MANIFEST.json").read_bytes()
+            ):
                 shutil.rmtree(stage)
                 return manifest
             raise PreflightError("adapter destination already exists with different hashes")
