@@ -1,76 +1,94 @@
 schema_version: 1
 base_model:
-  repository: Qwen/Qwen2.5-7B-Instruct
-  revision: a09a35458c702b33eeacc393d103063234e8bc28
+  repository: Qwen/Qwen3-8B
+  revision: b968826d9c46dd6066d109eabc6255188de91218
   license: Apache-2.0
   trust_remote_code: false
-  parameter_count: 7615616512
+  parameter_count: 8190735360
   files:
-    model-00001-of-00004.safetensors:
-      sha256: a1333e6293854747c481288ea83b348226af178dd565c49b6f9495ba1966aba7
-      size: 3945441440
-    model-00002-of-00004.safetensors:
-      sha256: f5d25a2772cb825164a2a2c0fb6d51a87e282abf21e4dd75bc5cfb3cd0ea6185
-      size: 3864726352
-    model-00003-of-00004.safetensors:
-      sha256: 8efdec4c1bc12317ae1a38dc42b595ce777738a64deea3fcb8a0a91381bcdfd5
-      size: 3864726424
-    model-00004-of-00004.safetensors:
-      sha256: 1a72d403cdf0c1ec3cb7f289f17b394a01e64394c2e9b3c0f94dbce3faf879bd
-      size: 3556377672
+    model-00001-of-00005.safetensors:
+      sha256: 31d6a825ae35f11fb85b195b4c42c146c051e446433125a215336abdf95cbf5f
+      size: 3996250744
+    model-00002-of-00005.safetensors:
+      sha256: 5991236cea6fe21f3d43cab0f0e84448734fbbe0789816202989f2ddc9d18282
+      size: 3993160032
+    model-00003-of-00005.safetensors:
+      sha256: c5185c4794be2d8a9784d5753c9922db38df478ce11f9ed0b415b7304d896836
+      size: 3959604768
+    model-00004-of-00005.safetensors:
+      sha256: b5ee7de71fbf17db3d5704e0c8f2bc7d005ca9e1d7ca2aeb19827b0cfcaa917a
+      size: 3187841392
+    model-00005-of-00005.safetensors:
+      sha256: 20c2d6366ab85c90786ccdd829cd2b9e7d30ef3b2ebbb998280e7e4014b542ff
+      size: 1244659840
   git_blob_sha1:
-    config.json: 0178295f88afc3c7f279ed284f961f8c1be00654
-    generation_config.json: 0eb3c536657dcd12626e09eca4b6198c0cbcde1e
-    model.safetensors.index.json: 14d037fdda5a1311dcc0275003a7a370d84114e6
-    tokenizer.json: 443909a61d429dff23010e5bddd28ff530edda00
-    tokenizer_config.json: 07bfe0640cb5a0037f9322287fbfc682806cf672
+    config.json: d46195ac87f837ad233d02b2f80f148bf7c005e0
+    generation_config.json: 20a8a9156fc8c3f25295ca067f61fdf120d517c5
+    merges.txt: 31349551d90c7606f325fe0f11bbb8bd5fa0d7c7
+    model.safetensors.index.json: 2b85c00f1b118961cd7a477e2bba0fe197a4ce1a
+    tokenizer.json: cd71f61a15a522601badb3dc960d800d9cb3766c
+    tokenizer_config.json: 417d038a63fa3de29cfde265caedae14d1a58d92
+    vocab.json: 4783fe10ac3adce15ac8f358ef5462739852c569
 quantization:
-  load_in_4bit: true
+  load_in_4bit: false
   quant_type: nf4
   compute_dtype: bfloat16
-  double_quant: true
+  double_quant: false
 lora:
-  rank: 16
-  alpha: 32
+  rank: 32
+  alpha: 64
   dropout: 0.05
   bias: none
-  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+  target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
 training:
-  maximum_sequence_tokens: 1536
-  micro_batch_size: 1
-  gradient_accumulation_steps: 16
+  maximum_sequence_tokens: 2048
+  micro_batch_size: 2
+  gradient_accumulation_steps: 8
   effective_batch_size: 16
-  learning_rate: 0.0002
-  optimizer: paged_adamw_8bit
+  learning_rate: 0.0001
+  optimizer: adamw_torch
   scheduler: cosine
   warmup_ratio: 0.03
   seed: 3407
   cpu_dry_run_steps: 5
   external_smoke_steps: 100
   checkpoint_steps: 25
+  save_total_limit: 3
+  early_stopping_patience: 3
+  maximum_epochs: 2
+  checkpoint_minutes: 3
 external:
   accelerator: A100
-  minimum_vram_gib: 39
+  minimum_vram_gib: 79
   minimum_ram_gib: 30
-  minimum_free_disk_gib: 60
-  maximum_credits: 10
-  maximum_wall_minutes: 240
+  minimum_free_disk_gib: 100
+  maximum_wall_minutes: 480
   persistent_storage_required: true
   auto_stop_required: true
+  evaluation_reserve_minutes: 90
 stage_minutes:
   preflight: 10
   model_acquisition: 30
   smoke: 20
-  profile: 45
-  training: 240
-  evaluation: 45
-  export: 30
-  merge: 45
+  profile: 30
+  training: 360
+  evaluation: 60
+  export: 20
+  merge: 30
 required_completion_artifacts:
-  - checkpoint/trainer_state.json
-  - adapter/adapter_config.json
-  - adapter/adapter_model.safetensors
-  - adapter/tokenizer_config.json
-  - adapter/ADAPTER_MANIFEST.json
-  - evaluation/evaluation.json
-  - serving/peft-rag-smoke.json
+- checkpoint/trainer_state.json
+- adapter/adapter_config.json
+- adapter/adapter_model.safetensors
+- adapter/tokenizer_config.json
+- adapter/ADAPTER_MANIFEST.json
+- evaluation/evaluation.json
+- evaluation/acceptance.json
+- serving/peft-rag-smoke.json
+method: bf16_lora

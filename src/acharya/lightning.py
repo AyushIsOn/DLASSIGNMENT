@@ -8,6 +8,8 @@ import math
 import os
 import shutil
 import subprocess
+import sys
+import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -17,8 +19,8 @@ from typing import Any, cast
 
 from acharya.config import canonical_json, load_yaml, sha256_bytes, sha256_file
 
-LOCKED_REPOSITORY = "Qwen/Qwen2.5-7B-Instruct"
-LOCKED_REVISION = "a09a35458c702b33eeacc393d103063234e8bc28"
+LOCKED_REPOSITORY = "Qwen/Qwen3-8B"
+LOCKED_REVISION = "b968826d9c46dd6066d109eabc6255188de91218"
 
 
 class PreflightError(RuntimeError):
@@ -47,27 +49,26 @@ class QLoRAProfile:
             (base.get("trust_remote_code"), False, "trust_remote_code"),
             (quantization.get("quant_type"), "nf4", "quantization type"),
             (quantization.get("compute_dtype"), "bfloat16", "compute dtype"),
-            (lora.get("rank"), 16, "LoRA rank"),
-            (training.get("maximum_sequence_tokens"), 1536, "sequence length"),
+            (lora.get("rank"), 32, "LoRA rank"),
+            (training.get("maximum_sequence_tokens"), 2048, "sequence length"),
             (training.get("effective_batch_size"), 16, "effective batch"),
             (training.get("cpu_dry_run_steps"), 5, "CPU dry-run steps"),
             (training.get("external_smoke_steps"), 100, "external smoke steps"),
-            (external.get("maximum_credits"), 10, "credit cap"),
-            (external.get("maximum_wall_minutes"), 240, "wall cap"),
-            (external.get("minimum_vram_gib"), 39, "VRAM minimum"),
+            (external.get("maximum_wall_minutes"), 480, "wall cap"),
+            (external.get("minimum_vram_gib"), 79, "VRAM minimum"),
         )
         for actual, locked, label in expected:
             if actual != locked:
                 raise PreflightError(f"QLoRA {label} must remain locked to {locked!r}")
-        if not quantization.get("load_in_4bit") or not quantization.get("double_quant"):
-            raise PreflightError("QLoRA must use double-quantized 4-bit loading")
+        if quantization.get("load_in_4bit") or value.get("method") != "bf16_lora":
+            raise PreflightError("A100 80GB profile requires BF16 LoRA")
         if int(training.get("micro_batch_size", 0)) * int(
             training.get("gradient_accumulation_steps", 0)
         ) != int(training["effective_batch_size"]):
             raise PreflightError("effective batch size does not reconcile")
         files = base.get("files")
-        if not isinstance(files, dict) or len(files) != 4:
-            raise PreflightError("all four base weight hashes are required")
+        if not isinstance(files, dict) or len(files) != 5:
+            raise PreflightError("all five base weight hashes are required")
         for name, record in files.items():
             if not isinstance(record, dict) or len(str(record.get("sha256", ""))) != 64:
                 raise PreflightError(f"invalid locked model hash:{name}")
@@ -76,10 +77,10 @@ class QLoRAProfile:
             "preflight": 10,
             "model_acquisition": 30,
             "smoke": 20,
-            "profile": 45,
-            "evaluation": 45,
-            "export": 30,
-            "merge": 45,
+            "profile": 30,
+            "evaluation": 60,
+            "export": 20,
+            "merge": 30,
         }
         if any(stages.get(name) != minutes for name, minutes in locked_stages.items()):
             raise PreflightError("external stage ceilings do not match the locked profile")
@@ -257,6 +258,12 @@ def select_resume_checkpoint(checkpoints: Path, run_sha256: str) -> Path | None:
         except (ValueError, OSError, TypeError):
             continue
         if binding.get("run_sha256") == run_sha256 and int(state.get("global_step", -1)) == step:
+            from acharya.checkpoints import verify
+
+            try:
+                verify(path, run_sha256)
+            except (OSError, ValueError, KeyError, RuntimeError):
+                continue
             valid.append((step, path))
     return max(valid, default=(0, None), key=lambda item: item[0])[1]
 
@@ -282,10 +289,9 @@ def _gpu_snapshot() -> dict[str, object]:
         for row in rows:
             name, memory = (item.strip() for item in row.rsplit(",", 1))
             parsed.append({"name": name, "vram_mib": int(memory)})
-        compatible = (
-            len(parsed) == 1
-            and "A100" in str(parsed[0]["name"])
-            and int(parsed[0]["vram_mib"]) >= 39 * 1024
+        compatible = len(parsed) == 1 and (
+            ("A100" in str(parsed[0]["name"]) and int(parsed[0]["vram_mib"]) >= 79 * 1024)
+            or ("H200" in str(parsed[0]["name"]) and int(parsed[0]["vram_mib"]) >= 130 * 1024)
         )
         return {"compatible": compatible, "devices": parsed}
     except (OSError, ValueError, subprocess.SubprocessError):
@@ -319,9 +325,10 @@ def validate_quote(profile: QLoRAProfile, quote_path: Path) -> dict[str, object]
     wall_minutes = startup_minutes + remaining_training_minutes + evaluation_export_minutes
     projected_credits = wall_minutes * credits_per_hour / 60.0
     if wall_minutes > float(profile.external["maximum_wall_minutes"]):
-        raise PreflightError("projected wall time exceeds the 240-minute cap")
-    if projected_credits > float(profile.external["maximum_credits"]):
-        raise PreflightError("projected usage exceeds the 10-credit cap")
+        raise PreflightError("projected wall time exceeds the 480-minute cap")
+    available = float(quote.get("available_credits", 0))
+    if not math.isfinite(available) or available <= 0 or projected_credits > available:
+        raise PreflightError("projected usage exceeds available_credits in the account quote")
     return {
         "quote_sha256": sha256_file(quote_path),
         "currency": currency,
@@ -383,10 +390,12 @@ def preflight(
         if not bool(preparation.get("ready")):
             raise PreflightError("completed strict preparation is required externally")
         if not bool(gpu.get("compatible")):
-            raise PreflightError("exactly one A100 with at least 39 GiB VRAM is required")
-        if quote is None:
-            raise PreflightError("quote evidence is required")
-        report["quote"] = validate_quote(profile, quote)
+            raise PreflightError("exactly one A100 80GB or H200 141GB is required")
+        report["quote"] = (
+            validate_quote(profile, quote)
+            if quote
+            else {"pricing_verified": False, "budget_control": "wall_time"}
+        )
         minimum_free = int(profile.external["minimum_free_disk_gib"]) * 2**30
         if shutil.disk_usage(workspace).free < minimum_free:
             raise PreflightError("persistent workspace has insufficient free disk")
@@ -408,6 +417,7 @@ def run_external_stage(workspace: Path, name: str, command: Sequence[str]) -> di
     evidence_root.mkdir(parents=True, exist_ok=True)
     inputs: dict[str, object] = {
         "command": list(command),
+        "invocation": time.time_ns(),
         "environment_contract": {
             "persistent_storage": os.environ.get("ACHARYA_PERSISTENT_STORAGE"),
             "auto_stop": os.environ.get("ACHARYA_AUTO_STOP"),
@@ -428,21 +438,42 @@ def run_external_stage(workspace: Path, name: str, command: Sequence[str]) -> di
     }
 
     def action() -> Mapping[str, Path]:
-        result = subprocess.run(command, capture_output=True, check=False)
+        environment = {**os.environ, "PYTHONUNBUFFERED": "1", "TOKENIZERS_PARALLELISM": "false"}
         receipt = evidence_root / f"{name}.json"
-        (evidence_root / f"{name}.stdout.log").write_bytes(result.stdout)
-        (evidence_root / f"{name}.stderr.log").write_bytes(result.stderr)
+        stdout_path = evidence_root / f"{name}.stdout.log"
+        stderr_path = evidence_root / f"{name}.stderr.log"
+        with stdout_path.open("wb") as stdout_log, stderr_path.open("wb") as stderr_log:
+            process = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment
+            )
+
+            def pump(source: Any, destination: Any, terminal: Any) -> None:
+                for line in iter(source.readline, b""):
+                    destination.write(line)
+                    destination.flush()
+                    terminal.write(line.decode(errors="replace"))
+                    terminal.flush()
+
+            workers = [
+                threading.Thread(target=pump, args=(process.stdout, stdout_log, sys.stdout)),
+                threading.Thread(target=pump, args=(process.stderr, stderr_log, sys.stderr)),
+            ]
+            for worker in workers:
+                worker.start()
+            returncode = process.wait()
+            for worker in workers:
+                worker.join()
         _atomic_json(
             receipt,
             {
                 "schema_version": 1,
                 "stage": name,
-                "exit_code": result.returncode,
-                "stdout_sha256": sha256_bytes(result.stdout),
-                "stderr_sha256": sha256_bytes(result.stderr),
+                "exit_code": returncode,
+                "stdout_sha256": sha256_file(stdout_path),
+                "stderr_sha256": sha256_file(stderr_path),
             },
         )
-        if result.returncode != 0:
+        if returncode != 0:
             raise RuntimeError(
                 f"external stage failed:{name}; inspect {evidence_root}/{name}.stderr.log"
             )
@@ -544,6 +575,16 @@ def validate_completion_evidence(workspace: Path, report: Mapping[str, object]) 
     ):
         raise PreflightError("Gate C adapter evaluation evidence is incomplete or unsafe")
 
+    acceptance = json.loads((run_root / "evaluation/acceptance.json").read_text())
+    if (
+        acceptance.get("engineering_acceptance_passed") is not True
+        or acceptance.get("retrieval_mode") != "full"
+        or acceptance.get("corpus_fingerprint") != preparation.get("fingerprint")
+        or acceptance.get("adapter_model_sha256")
+        != sha256_file(run_root / "adapter/adapter_model.safetensors")
+        or acceptance.get("test_sha256") != sha256_file(workspace / "eval/acceptance.jsonl")
+    ):
+        raise PreflightError("API/RAG acceptance evidence is missing or stale")
     serving = json.loads((run_root / "serving/peft-rag-smoke.json").read_text(encoding="utf-8"))
     if (
         serving.get("schema_version") != 2

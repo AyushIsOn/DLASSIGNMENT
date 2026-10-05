@@ -25,6 +25,7 @@ def workspace_factory(tmp_path: Path, project_root: Path) -> Callable[[], Path]:
         shutil.copy2(project_root / "pyproject.toml", root / "pyproject.toml")
         shutil.copytree(project_root / "configs", root / "configs")
         shutil.copytree(project_root / "eval", root / "eval")
+        shutil.copytree(project_root / "prompts", root / "prompts")
         (root / "data").mkdir()
         shutil.copy2(project_root / "data" / "dataset V1.0.pdf", root / "data" / "dataset V1.0.pdf")
         return root

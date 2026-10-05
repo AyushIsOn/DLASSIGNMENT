@@ -13,7 +13,7 @@ Community labels and source references have not been clinically verified.
   whose Apache 2.0 label differs from upstream. Preserve upstream attribution and
   content rights; this project does not claim to relicense the collection.
   Original authors omitted answers from three MedlinePlus subsets for copyright reasons.
-  This project filters rows and deduplicates/chunks accepted text for retrieval only.
+  This version quarantines the whole general-biomedical collection; it contributes no active retrieval or training text.
 - [Ayurvedic Knowledge Dataset](https://www.kaggle.com/datasets/akashkumarpr/ayurvedic-knowledge-dataset),
   Akash Kumar, version 1: CC BY 4.0 as stated by the uploader. Selected descriptive
   columns are converted to question/answer records; treatment principles are omitted.
@@ -24,10 +24,13 @@ Community labels and source references have not been clinically verified.
 - [Ayurveda Healthcare Dataset](https://www.kaggle.com/datasets/aliainaanraza/ayurveda-healthcare-dataset),
   Ali Ainaan Raza, version 2: CC BY 4.0 as stated by the uploader. Downloaded for audit,
   quarantined from all active retrieval and training because of quality concerns.
-- [Sushruta Samhita, volume 1](https://archive.org/details/englishtranslati00susruoft),
-  translated by Kunja Lal Bhishagratna, 1907. Public-domain historical English text,
-  acquired as Internet Archive OCR; normalized and chunked for retrieval only.
-  OCR errors and obsolete medical assertions remain possible.
+- Sushruta Samhita, translated by Kunja Lal Bhishagratna:
+  [volume I (1907)](https://archive.org/details/englishtranslati01susruoft),
+  [volume II (1911)](https://archive.org/details/englishtranslati00susruoft),
+  [volume III (1916)](https://archive.org/details/englishtranslati03susruoft).
+  Public-domain historical English text, acquired as Internet Archive OCR,
+  normalized/chunked for retrieval. Selected non-prescriptive descriptive paragraphs
+  also form grounded extraction tasks. OCR errors and obsolete assertions remain possible.
 - `data/curated/ayush-principles.txt` is a project-authored paraphrase, under this
   repository's MIT license, based on [Ayusoft](https://ayusoft.ayush.gov.in/principles-of-ayurveda/)
   and [Delhi AYUSH](https://ayush.delhi.gov.in/ayush/fundamental-principles). It is not an official

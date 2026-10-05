@@ -66,9 +66,18 @@ def test_resume_and_quote_caps(workspace_factory: object, tmp_path: Path) -> Non
         (path / "trainer_state.json").write_text(
             json.dumps({"global_step": step}), encoding="utf-8"
         )
-        (path / "RUN_INPUT.json").write_text(
-            json.dumps({"run_sha256": binding}), encoding="utf-8"
-        )
+        (path / "RUN_INPUT.json").write_text(json.dumps({"run_sha256": binding}), encoding="utf-8")
+        from acharya.checkpoints import seal
+
+        for filename in (
+            "adapter_model.safetensors",
+            "adapter_config.json",
+            "optimizer.pt",
+            "scheduler.pt",
+            "rng_state.pth",
+        ):
+            (path / filename).write_text("fixture")
+        seal(path)
     assert select_resume_checkpoint(checkpoints, "run") == checkpoints / "checkpoint-75"
 
     quote = tmp_path / "quote.json"
@@ -76,6 +85,7 @@ def test_resume_and_quote_caps(workspace_factory: object, tmp_path: Path) -> Non
         json.dumps(
             {
                 "credits_per_hour": 2,
+                "available_credits": 10,
                 "currency_per_credit": 1.5,
                 "currency": "USD",
                 "quoted_at_utc": "2025-01-01T00:00:00Z",
@@ -89,7 +99,7 @@ def test_resume_and_quote_caps(workspace_factory: object, tmp_path: Path) -> Non
     result = validate_quote(QLoRAProfile.load(root), quote)
     assert result["quote_sha256"] == sha256_file(quote)
     quote.write_text(quote.read_text().replace('"credits_per_hour": 2', '"credits_per_hour": 9'))
-    with pytest.raises(PreflightError, match="10-credit"):
+    with pytest.raises(PreflightError, match="available"):
         validate_quote(QLoRAProfile.load(root), quote)
 
 
@@ -138,7 +148,7 @@ def _completion_fixture(root: Path) -> Path:
     (run / "adapter/ADAPTER_MANIFEST.json").write_bytes(
         canonical_json(
             {
-                "base_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+                "base_revision": "b968826d9c46dd6066d109eabc6255188de91218",
                 "qlora_config_sha256": profile.config_sha256,
                 "files": adapter_files,
             }
@@ -165,7 +175,7 @@ def _completion_fixture(root: Path) -> Path:
         adversarial.append(record)
     evaluation = {
         "schema_version": 2,
-        "base_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+        "base_revision": "b968826d9c46dd6066d109eabc6255188de91218",
         "profile_sha256": profile.config_sha256,
         "preparation_fingerprint": fingerprint,
         "adapter_model_sha256": sha256_file(run / "adapter/adapter_model.safetensors"),
@@ -180,6 +190,17 @@ def _completion_fixture(root: Path) -> Path:
     evaluation_path = run / "evaluation/evaluation.json"
     evaluation_path.parent.mkdir(parents=True)
     evaluation_path.write_bytes(canonical_json(evaluation) + b"\n")
+    (run / "evaluation/acceptance.json").write_text(
+        json.dumps(
+            {
+                "engineering_acceptance_passed": True,
+                "retrieval_mode": "full",
+                "corpus_fingerprint": fingerprint,
+                "adapter_model_sha256": sha256_file(run / "adapter/adapter_model.safetensors"),
+                "test_sha256": sha256_file(root / "eval/acceptance.jsonl"),
+            }
+        )
+    )
     serving_path = run / "serving/peft-rag-smoke.json"
     serving_path.parent.mkdir(parents=True)
     serving_path.write_bytes(
@@ -192,9 +213,7 @@ def _completion_fixture(root: Path) -> Path:
                 "generated_candidate_count": 1,
                 "outcome": "answered",
                 "citation_count": 1,
-                "adapter_manifest_sha256": sha256_file(
-                    run / "adapter/ADAPTER_MANIFEST.json"
-                ),
+                "adapter_manifest_sha256": sha256_file(run / "adapter/ADAPTER_MANIFEST.json"),
             }
         )
         + b"\n"
@@ -220,4 +239,15 @@ def test_finalize_rejects_unsafe_and_invocation_only_evidence(
     serving["generated_candidate_accepted"] = False
     serving_path.write_bytes(canonical_json(serving) + b"\n")
     with pytest.raises(PreflightError, match="acceptance"):
+        finalize(root, run)
+
+
+def test_finalize_rejects_failed_api_acceptance(workspace_factory: object) -> None:
+    root = workspace_factory()  # type: ignore[operator]
+    run = _completion_fixture(root)
+    path = run / "evaluation/acceptance.json"
+    report = json.loads(path.read_text())
+    report["engineering_acceptance_passed"] = False
+    path.write_text(json.dumps(report))
+    with pytest.raises(PreflightError, match="API/RAG"):
         finalize(root, run)

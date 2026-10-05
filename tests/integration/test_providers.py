@@ -44,7 +44,7 @@ def test_generated_candidate_is_gated_and_rejected_text_never_leaks(built_worksp
     source_eval = Path(__file__).resolve().parents[2] / "eval" / "support_verifier.jsonl"
     (built_workspace / "eval").mkdir(exist_ok=True)
     (built_workspace / "eval" / "support_verifier.jsonl").write_bytes(source_eval.read_bytes())
-    (built_workspace / "prompts").mkdir()
+    (built_workspace / "prompts").mkdir(exist_ok=True)
     source_prompt = Path(__file__).resolve().parents[2] / "prompts" / "grounded_v1.txt"
     (built_workspace / "prompts" / "grounded_v1.txt").write_bytes(source_prompt.read_bytes())
     calibrate_support(settings, AlwaysSupported())

@@ -58,26 +58,40 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
         raise PreflightError("adapter export is incomplete")
 
     import torch
-    from peft import AutoPeftModelForCausalLM
-    from transformers import AutoTokenizer
+    from peft import PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    from training.train_qlora import _verify_model_snapshot
 
     if not torch.cuda.is_available():
         raise PreflightError("adapter evaluation requires CUDA")
     tokenizer = AutoTokenizer.from_pretrained(adapter, trust_remote_code=False)
-    model = AutoPeftModelForCausalLM.from_pretrained(
-        adapter, torch_dtype=torch.bfloat16, device_map={"": 0}, trust_remote_code=False
+    snapshot = workspace / "artifacts/model-cache" / LOCKED_REVISION
+    _verify_model_snapshot(profile, snapshot)
+    base = AutoModelForCausalLM.from_pretrained(
+        snapshot,
+        local_files_only=True,
+        torch_dtype=torch.bfloat16,
+        device_map={"": 0},
+        trust_remote_code=False,
+        attn_implementation="sdpa",
     )
+    model = PeftModel.from_pretrained(base, adapter, local_files_only=True)
     model.eval()
     policy = SafetyPolicy(settings.safety)
 
     def generate(messages: list[dict[str, str]]) -> str:
-        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        encoded = tokenizer(prompt, return_tensors="pt", truncation=True).to(model.device)
+        prompt = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True, enable_thinking=False
+        )
+        encoded = tokenizer(prompt, return_tensors="pt", add_special_tokens=False).to(model.device)
         with torch.inference_mode():
             generated = model.generate(**encoded, max_new_tokens=384, do_sample=False)
-        return str(tokenizer.decode(
-            generated[0][encoded["input_ids"].shape[1] :], skip_special_tokens=True
-        ))
+        return str(
+            tokenizer.decode(
+                generated[0][encoded["input_ids"].shape[1] :], skip_special_tokens=True
+            )
+        )
 
     records: list[dict[str, object]] = []
     held_out_unsafe = 0
@@ -141,10 +155,12 @@ def evaluate(workspace: Path, adapter: Path, output: Path, limit: int) -> dict[s
         "quality_metric": "reference_token_f1: surface overlap only; requires human review",
         "mean_adapter_reference_token_f1": sum(
             float(str(record["adapter_reference_token_f1"])) for record in records
-        ) / len(records),
+        )
+        / len(records),
         "mean_base_reference_token_f1": sum(
             float(str(record["base_reference_token_f1"])) for record in records
-        ) / len(records),
+        )
+        / len(records),
         "profile_sha256": profile.config_sha256,
     }
     output.parent.mkdir(parents=True, exist_ok=True)

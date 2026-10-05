@@ -136,3 +136,12 @@ def correction_prompt(prompt: RenderedPrompt) -> RenderedPrompt:
         output_tokens=prompt.output_tokens,
         contexts=prompt.contexts,
     )
+
+
+def grounded_chat_messages(prompt: str) -> list[dict[str, str]]:
+    """Use real system/user chat roles with the same boundaries as SFT."""
+    separator = "\n\nHISTORY:\n"
+    if separator not in prompt:
+        raise ValueError("grounded prompt lacks history boundary")
+    system, user = prompt.split(separator, 1)
+    return [{"role": "system", "content": system}, {"role": "user", "content": "HISTORY:\n" + user}]

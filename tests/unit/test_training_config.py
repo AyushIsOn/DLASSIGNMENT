@@ -13,10 +13,10 @@ def test_locked_qlora_profile_and_cpu_dry_run(project_root: Path) -> None:
     profile = QLoRAProfile.load(project_root)
     assert profile.value["base_model"]["revision"] == LOCKED_REVISION
     assert profile.value["quantization"] == {
-        "load_in_4bit": True,
+        "load_in_4bit": False,
         "quant_type": "nf4",
         "compute_dtype": "bfloat16",
-        "double_quant": True,
+        "double_quant": False,
     }
     assert profile.value["training"]["effective_batch_size"] == 16
     result = cpu_dry_run()
@@ -29,8 +29,8 @@ def test_profile_rejects_full_tuning_or_relaxed_caps(workspace_factory: object) 
     root = workspace_factory()  # type: ignore[operator]
     path = root / "configs" / "qlora.yaml"
     value = yaml.safe_load(path.read_text(encoding="utf-8"))
-    value["quantization"]["load_in_4bit"] = False
-    value["external"]["maximum_credits"] = 20
+    value["method"] = "full"
+    value["external"]["maximum_wall_minutes"] = 481
     path.write_text(yaml.safe_dump(value), encoding="utf-8")
     with pytest.raises(PreflightError):
         QLoRAProfile.load(root)
@@ -44,6 +44,7 @@ def test_training_masks_prompt_tokens() -> None:
             *,
             tokenize: bool,
             add_generation_prompt: bool = False,
+            enable_thinking: bool = False,
         ) -> str:
             rendered = " ".join(f"{item['role']}:{item['content']}" for item in messages)
             return rendered + (" assistant:" if add_generation_prompt else "")
@@ -66,10 +67,16 @@ def test_training_masks_prompt_tokens() -> None:
     assert result["labels"][0] == -100
     assert any(label != -100 for label in result["labels"])
     with pytest.raises(PreflightError, match="exceeds maximum"):
-        _tokenize_chat_row({"messages": [
-            {"role": "user", "content": "question"},
-            {"role": "assistant", "content": "long answer"},
-        ]}, FakeTokenizer(), 20)
+        _tokenize_chat_row(
+            {
+                "messages": [
+                    {"role": "user", "content": "question"},
+                    {"role": "assistant", "content": "long answer"},
+                ]
+            },
+            FakeTokenizer(),
+            20,
+        )
 
 
 def test_training_rejects_incompatible_prefix() -> None:
@@ -81,7 +88,13 @@ def test_training_rejects_incompatible_prefix() -> None:
             return {"input_ids": [ord(char) for char in text]}
 
     with pytest.raises(PreflightError, match="prefix does not match"):
-        _tokenize_chat_row({"messages": [
-            {"role": "user", "content": "question"},
-            {"role": "assistant", "content": "answer"},
-        ]}, IncompatibleTokenizer(), 128)
+        _tokenize_chat_row(
+            {
+                "messages": [
+                    {"role": "user", "content": "question"},
+                    {"role": "assistant", "content": "answer"},
+                ]
+            },
+            IncompatibleTokenizer(),
+            128,
+        )
