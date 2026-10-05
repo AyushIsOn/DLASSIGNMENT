@@ -90,3 +90,17 @@ After review, compile a fresh dataset:
 Stop the GPU after comparison/drafting or failure. The commands do not stop billing.
 Model weights, reviewed replacement targets and measured answer quality are not
 included in this change. No new clinical accuracy claim is made.
+
+## Retrieval development and failure traces
+
+CPU quality screening now recalibrates against `eval/retrieval_development.jsonl`
+before evaluating the unchanged independent benchmark. The development set uses
+different question strings but overlaps the same foundational concepts; it is not
+a claim of independent clinical validation. Calibration considers the same context
+count as serving, requires labeled relevant sources for foundational development
+queries and checks negative queries against every context offered to serving.
+
+Failed response records include the failure stage and top retrieval scores/text.
+These diagnostic fields are written to local evaluation artifacts, not exposed by
+the chat API. Improvements must be measured on Lightning; no new benchmark result
+is claimed from the local tests.

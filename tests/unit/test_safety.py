@@ -44,3 +44,21 @@ def test_candidate_is_rejected_whole(project_root: Path) -> None:
 
 def test_unicode_normalization() -> None:
     assert normalize_safety_text("\uff24\uff2f  I\u00a0HAVE") == "do i have"
+
+
+def test_personal_constitution_inference_refuses_but_education_retrieves(
+    project_root: Path,
+) -> None:
+    policy = _policy(project_root)
+    assert (
+        policy.classify_query(
+            "Can you identify my constitutional pattern just from one short message?"
+        ).action
+        is SafetyAction.DIAGNOSIS
+    )
+    assert policy.classify_query("What is my prakriti?").action is SafetyAction.DIAGNOSIS
+    assert policy.classify_query("What does prakriti mean?").action is SafetyAction.RETRIEVE
+    assert (
+        policy.classify_query("Identify my prakriti; I cannot breathe.").action
+        is SafetyAction.URGENT
+    )

@@ -32,7 +32,7 @@ from acharya.rag.grounding import (
 )
 from acharya.rag.index import BM25Index, RetrievalMode, load_index
 from acharya.rag.prompt import PromptBudget, correction_prompt, render_grounded_prompt
-from acharya.rag.retrieve import retrieve
+from acharya.rag.retrieve import RetrievalHit, retrieve
 from acharya.safety import SafetyAction, SafetyPolicy
 from acharya.schemas import (
     ChatRequest,
@@ -67,6 +67,8 @@ class RAGService:
         self.generative_provider = generative_provider
         self.generation_mode = generation_mode
         self._support_scorer = support_scorer
+        self.last_retrieval_hits: tuple[RetrievalHit, ...] = ()
+        self.last_failure_reason: str | None = None
         self._runtime_fingerprint: str | None = None
         self._embedder: DenseEncoder | None = None
         self._reranker: Reranker | None = None
@@ -247,8 +249,11 @@ class RAGService:
         return None
 
     def chat(self, request: ChatRequest) -> ChatResponse:
+        self.last_retrieval_hits = ()
+        self.last_failure_reason = None
         decision = self.policy.classify_query(request.message)
         if not decision.retrieves:
+            self.last_failure_reason = f"policy:{decision.action.value}"
             outcome: Literal["urgent", "refused"]
             if decision.action in {SafetyAction.URGENT, SafetyAction.SELF_HARM}:
                 outcome = "urgent"
@@ -278,10 +283,12 @@ class RAGService:
             reranker=reranker,
             candidate_k=int(self.settings.rag["bm25"]["candidate_k"]),
         )
+        self.last_retrieval_hits = hits
         supported = tuple(
             hit for hit in hits if hit.supported and self.policy.role_allowed(hit.document.role)
         )[: int(self.settings.rag["hybrid"]["maximum_contexts"])]
         if not supported:
+            self.last_failure_reason = "no_supported_context"
             return self._abstention(index)
         contexts = tuple(
             ProviderContext(
@@ -298,10 +305,12 @@ class RAGService:
         if generated is None:
             result = self.provider.answer(request.message, contexts)
             if result is None:
+                self.last_failure_reason = "no_matching_extractive_sentence"
                 return self._abstention(index)
             try:
                 citations = validate_extractive_result(result, contexts, self.policy)
-            except GroundingError:
+            except GroundingError as error:
+                self.last_failure_reason = f"extractive_validation:{error}"
                 return self._abstention(index)
             answer = result.text
         else:

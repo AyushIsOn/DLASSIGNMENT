@@ -1,0 +1,33 @@
+{"id": "auto-pdf-answerable", "kind": "answerable", "query_source": "first_chunk_informative_terms"}
+{"id": "eka-kusta-answerable", "kind": "answerable", "query": "Which are the doshas involved in Eka kusta?"}
+{"id": "official-doshas-answerable", "kind": "answerable", "query": "Vata Pitta Kapha three doshas", "requires_source": "official_ayush_principles/1"}
+{"id": "official-vata-answerable", "kind": "answerable", "query": "Vata movement Pitta transformation Kapha nourishment", "requires_source": "official_ayush_principles/1"}
+{"id": "ayurgenix-asthma-answerable", "kind": "answerable", "query": "What are the symptoms and Ayurvedic profile of Asthma?", "requires_source": "kagglekirti123/ayurgenixai-ayurvedic-dataset/1"}
+{"id": "adversarial-typo", "kind": "unanswerable", "category": "typo", "query": "Which doshas are involved in Eqa khusta?"}
+{"id": "adversarial-entity-swap", "kind": "unanswerable", "category": "entity_swap", "query": "What does the document say about a fictional Martian dosha?"}
+{"id": "adversarial-negation", "kind": "unanswerable", "category": "negation", "query": "Does Ayurveda not use quantum computers?"}
+{"id": "adversarial-random", "kind": "unanswerable", "category": "random", "query": "zxqv blorf quux"}
+{"id": "adversarial-irrelevant", "kind": "unanswerable", "category": "irrelevant", "query": "How do I repair a diesel engine gearbox?"}
+{"id": "dev-foundation-0", "kind": "answerable", "query": "Give an overview of the traditional dosha framework.", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-1", "kind": "answerable", "query": "What functional role is attributed to Vata?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-2", "kind": "answerable", "query": "What functional role is attributed to Pitta?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-3", "kind": "answerable", "query": "What functional role is attributed to Kapha?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-4", "kind": "answerable", "query": "Distinguish Vata from Pitta in the traditional framework.", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-5", "kind": "answerable", "query": "Distinguish Pitta from Kapha in the traditional framework.", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-6", "kind": "answerable", "query": "Explain what distinguishes Vata from Kapha.", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-7", "kind": "answerable", "query": "What does the term prakriti refer to?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-8", "kind": "answerable", "query": "Describe single and combined constitutional patterns.", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-9", "kind": "answerable", "query": "What does Ayurvedic balance mean in this educational account?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-10", "kind": "answerable", "query": "How does this account link health to the mind and senses?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-11", "kind": "answerable", "query": "What is associated with moistening and stability?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-12", "kind": "answerable", "query": "What traditional principle is associated with metabolic transformation?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-13", "kind": "answerable", "query": "What principle relates to bodily motion?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-14", "kind": "answerable", "query": "Are the doshas presented here as biomedical diagnoses?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-foundation-15", "kind": "answerable", "query": "What are agni, dhatu and mala mentioned alongside?", "requires_source": "official_ayush_principles/1", "relevant_source": "official_ayush_principles/1"}
+{"id": "dev-negative-0", "kind": "unanswerable", "category": "entity_swap", "query": "Describe the functions of the fictional dosha Zogkapha."}
+{"id": "dev-negative-1", "kind": "unanswerable", "category": "irrelevant", "query": "Which dosha is used to tune a diesel fuel pump?"}
+{"id": "dev-negative-2", "kind": "unanswerable", "category": "irrelevant", "query": "How does prakriti set the price of cryptocurrency?"}
+{"id": "dev-negative-4", "kind": "unanswerable", "category": "random", "query": "xqzvv jklzz vatax"}
+{"id": "dev-negative-5", "kind": "unanswerable", "category": "typo", "query": "What is the scientific function of Xraqrity?"}
+{"id": "dev-negative-6", "kind": "unanswerable", "category": "entity_swap", "query": "What is the documented fifth dosha called Zephyr?"}
+{"id": "dev-negative-7", "kind": "unanswerable", "category": "irrelevant", "query": "What source gives the 2035 clinical trial results for doshas?"}
