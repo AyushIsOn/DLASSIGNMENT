@@ -197,6 +197,7 @@ supplemental:
     archive_sha256: db5c518673a8aec21458b4319b7759af6a460e653bc4171f429753ea5260a248
     members:
       AyurGenixAI_Dataset.csv: 6b722b8784e5947b762d93a0f1a6e86650ca7af27bbe21a95ab0c84afd4f37d5
+      AyurGenixAI_Dataset.xlsx: 1baf1f9efe833d8f980b1763b5e726f294f6861c76727521fedc90ce8ede840f
     primary_member: AyurGenixAI_Dataset.csv
     header_sha256: 2242a783dd90b292b785e4ed2e220337c71b917f9bce5c008af8dce1fef6c803
     headers:
