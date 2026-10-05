@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -16,8 +17,8 @@ from acharya.rag.embed import (
     Reranker,
     acquire_locked_model,
 )
-from acharya.rag.index import BM25Index, load_index
-from acharya.rag.retrieve import SupportThresholds, retrieve
+from acharya.rag.index import BM25Index, load_index, tokenize
+from acharya.rag.retrieve import SupportThresholds, retrieve, threshold_support
 
 _REQUIRED_ADVERSARIAL_CATEGORIES = frozenset(
     {"typo", "entity_swap", "negation", "random", "irrelevant"}
@@ -251,18 +252,27 @@ def calibrate(
                 for dense in dense_grid
                 for rerank_value in rerank_grid
             ]
+    # Ranking and neural scores do not depend on support thresholds. Compute
+    # each query once rather than repeating expensive inference for every grid cell.
+    cached = {}
+    queries = tuple(dict.fromkeys((*answerable_queries, *adversarial_queries)))
+    for number, query in enumerate(queries, 1):
+        print(json.dumps({"event": "calibration_query_started", "query_number": number,
+                          "total_queries": len(queries)}), flush=True)
+        started = time.monotonic()
+        hit = retrieve(index, query, top_k=1, embedder=embedder, reranker=reranker)[0]
+        count = len({term for term in tokenize(query) if index.idf.get(term, 0.0) > 0})
+        cached[query] = (hit, count)
+        print(json.dumps({"event": "calibration_query_finished", "query_number": number,
+                          "elapsed_seconds": round(time.monotonic() - started, 2)}), flush=True)
     scored = []
     for thresholds in candidates:
         answers = sum(
-            retrieve(index, query, thresholds, top_k=1, embedder=embedder, reranker=reranker)[
-                0
-            ].supported
+            threshold_support(cached[query][0], thresholds, index.mode, cached[query][1])
             for query in answerable_queries
         )
         false = sum(
-            retrieve(index, query, thresholds, top_k=1, embedder=embedder, reranker=reranker)[
-                0
-            ].supported
+            threshold_support(cached[query][0], thresholds, index.mode, cached[query][1])
             for query in adversarial_queries
         )
         if false == 0:

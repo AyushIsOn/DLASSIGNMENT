@@ -34,3 +34,35 @@ def test_missing_and_stale_calibration_refuse_readiness(built_workspace: Path) -
     assert not is_ready(settings)
     with pytest.raises(RuntimeError, match="stale"):
         load_calibration(settings)
+
+
+def test_calibration_runs_neural_retrieval_once_per_unique_query(
+    built_workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dataclasses import replace
+
+    from acharya.rag.index import load_index
+    from acharya.rag.retrieve import retrieve as real_retrieve
+
+    settings = Settings.load(built_workspace)
+    base = load_index(settings)
+    index = replace(base, mode="full",
+                    dense_vectors=tuple((1.0, 0.0) for _ in base.documents))
+    calls: list[str] = []
+
+    class Encoder:
+        def encode_query(self, query: str) -> list[float]:
+            return [1.0, 0.0]
+
+        def encode_passages(self, passages: list[str]) -> list[list[float]]:
+            return [[1.0, 0.0] for _ in passages]
+
+    class Reranker:
+        def score(self, query: str, passages: list[str]) -> list[float]:
+            calls.append(query)
+            return [0.99 for _ in passages]
+
+    monkeypatch.setattr("acharya.rag.evaluate.retrieve", real_retrieve)
+    calibrate(settings, index, embedder=Encoder(), reranker=Reranker())
+    assert calls
+    assert len(calls) == len(set(calls))
