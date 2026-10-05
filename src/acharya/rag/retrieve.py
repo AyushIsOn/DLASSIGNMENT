@@ -188,3 +188,26 @@ def retrieve(
             )
         )
     return tuple(hits[:top_k])
+
+
+def threshold_support(
+    hit: RetrievalHit, thresholds: SupportThresholds, mode: str, informative_count: int
+) -> bool:
+    """Apply threshold grids to cached, threshold-independent retrieval scores."""
+    lexical = _lexical_supported(
+        hit.positive_query_idf, hit.informative_overlap, hit.lexical_coverage,
+        hit.bm25_score, informative_count, thresholds,
+    )
+    if mode == "bm25_only":
+        return lexical
+    dense = (hit.dense_score is not None and thresholds.dense_score is not None
+             and hit.dense_score >= thresholds.dense_score)
+    if mode != "full":
+        return bool(lexical and dense)
+    required = 1 if informative_count == 1 else thresholds.minimum_overlap
+    anchor = (hit.positive_query_idf > 0
+              and hit.informative_overlap >= required
+              and hit.bm25_score >= thresholds.raw_score)
+    return bool(anchor and (lexical or dense)
+                and hit.rerank_score is not None and thresholds.rerank_score is not None
+                and hit.rerank_score >= thresholds.rerank_score)

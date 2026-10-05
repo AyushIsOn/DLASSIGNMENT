@@ -8,6 +8,10 @@ WORKSPACE="$(cd "$WORKSPACE" && pwd)"
 PYTHON="$WORKSPACE/.venv/bin/python"
 export PYTHONPATH="$SOURCE/src:$SOURCE${PYTHONPATH:+:$PYTHONPATH}"
 export PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false
+export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4
+(while sleep 30; do echo "Repair still running ($(date -u +%H:%M:%S)); inspect process CPU use if query progress stalls."; done) &
+HEARTBEAT_PID=$!
+trap 'kill "$HEARTBEAT_PID" 2>/dev/null || true' EXIT
 cd "$SOURCE"
 if [[ "$MODE" == cpu ]]; then
   export CUDA_VISIBLE_DEVICES=""
