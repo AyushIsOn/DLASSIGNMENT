@@ -84,7 +84,7 @@ class BGEReranker:
         from torch.nn import Identity
 
         self._model = CrossEncoder(
-            str(model.path), trust_remote_code=False, default_activation_function=Identity()
+            str(model.path), trust_remote_code=False, activation_fn=Identity()
         )
 
     def score(self, query: str, passages: list[str]) -> list[float]:

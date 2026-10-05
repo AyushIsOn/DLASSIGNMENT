@@ -104,3 +104,10 @@ Failed response records include the failure stage and top retrieval scores/text.
 These diagnostic fields are written to local evaluation artifacts, not exposed by
 the chat API. Improvements must be measured on Lightning; no new benchmark result
 is claimed from the local tests.
+
+The source-question retrieval revision embeds and reranks existing source question
+metadata together with passage text. Index fingerprints include this format; CPU
+quality screening rebuilds the full index while retaining old index directories.
+Bounded source diversity expands candidate recall without changing support
+thresholds. Sentence selection normalizes grammatical number, but returned text
+stays verbatim and is validated against its original source.
