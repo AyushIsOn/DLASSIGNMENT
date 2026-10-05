@@ -1,144 +1,126 @@
-# AcharyaGPT dataset card — 4 October 2026
+# AcharyaGPT dataset card — 6 October 2026
 
-Prepared fingerprint: `ea1cc9d86476329512b50bdb865aeb48921ff6f81d149c4de0b810115fa81cc8`.
+Fingerprint: `250d0ff5acdb5adfd9664c08f4447b9b91bfa56a521a1c6316dc0de928d902ec`.
 
-This is an educational research corpus for a cited Ayurveda assistant. The active
-retrieval corpus contains **28,092 chunks**. Fine-tuning uses **1,454 complete
-question/answer examples**, split into **1,174 train / 136 validation / 144 test**.
-These are separate views of the data: retrieval windows are not training answers.
+The active corpus contains **8,642 Ayurveda retrieval passages** and **2,593 grounded
+training/evaluation examples**: **2,093 train / 236 validation / 264 test**. This is
+an educational research collection, not clinically validated medical instruction.
+Ayurveda retrieval coverage grew from 4,628 to 8,642 passages (87%). The previous
+28,092 total included 23,464 general-biomedical MedQuAD passages, now removed.
+We did not enlarge the dataset by duplicating rows or adding unrelated medicine.
 
-| Source | Raw rows or paragraphs | Accepted retrieval records | Retrieval chunks | Complete SFT examples |
-|---|---:|---:|---:|---:|
-| Ayurvedic Knowledge, Kaggle v1 | 1,000 | 1,000 | 1,000 | 1,000 |
-| AyurGenixAI, Kaggle v1 | 446 | 446 | 446 | 446 |
-| Repository six-page PDF | 19 Q&A | 10 | 11 | 8 |
-| MedQuAD, Kaggle v1 | 16,412 | 12,241 | 23,464 | 0 |
-| Sushruta, 1907 English OCR | 2,583 retained-length paragraphs | 2,582 | 3,167 | 0 |
-| Project-authored AYUSH paraphrases | 4 | 4 | 4 | 0 |
-| Ayurveda Healthcare, Kaggle v2 | 10,000 | 0 — quarantined | 0 | 0 |
+| Source | Accepted records | Retrieval passages | SFT examples |
+|---|---:|---:|---:|
+| Ayurvedic Knowledge, Kaggle v1 | 1,000 | 1,000 | 1,000 |
+| AyurGenixAI, Kaggle v1 | 446 | 446 | 446 |
+| Repository PDF | 10 | 11 | 8 |
+| Sushruta volume I, 1907 | 1,823 | 2,229 | 404 |
+| Sushruta volume II, 1911 | 2,582 | 3,167 | 450 |
+| Sushruta volume III, 1916 | 1,541 | 1,785 | 285 |
+| Four project-authored AYUSH paraphrases | 4 | 4 | 0 |
+| MedQuAD (16,412 raw records) | 0 — out of scope | 0 | 0 |
+| Ayurveda Healthcare (10,000 raw records) | 0 — quality quarantine | 0 | 0 |
 
-## What the records contain
+## What is actually inside
 
-Ayurvedic Knowledge is a 12-column table: identifiers, Ayurvedic name, proposed
-modern equivalent, body system, dosha, prognosis, symptoms, age, gender, treatment
-principles, and source text. Prepared answers retain descriptive name/equivalent,
-body system, dosha, prognosis and symptom fields with explicit labels. Treatment
-principles are omitted. The source's mappings and prognosis labels are community
-assertions, not validated diagnoses or evidence of treatment effectiveness.
+**Ayurvedic Knowledge:** a 12-column community table. Prepared answers label names,
+proposed modern equivalents, body system, dosha, prognosis and symptoms. Treatment
+principles are excluded. The original mappings/prognosis claims are uploader
+assertions, not validated diagnoses. Some records concern modern disease names
+through their purported Ayurvedic profiles; they are not a general biomedical QA set.
 
-AyurGenixAI has 34 columns and 446 rows representing 367 distinct disease names.
-Prepared records retain disease name, Hindi and Marathi names, symptoms, doshas,
-and constitution. They omit remedies, herbs, formulations, medicines, medical
-interventions, diet/yoga recommendations, prevention and prognosis. Most text is
-English; the translated names do not constitute a multilingual Q&A dataset.
+**AyurGenixAI:** 446 rows, 34 columns, 367 distinct disease names. Prepared answers
+retain names (including Hindi/Marathi aliases), symptoms, doshas and constitution.
+Medicines, herbs, formulations, interventions, diet/yoga, prevention and prognosis
+are omitted. Text is predominantly English; this is not multilingual QA training.
 
-The original Healthcare table repeats a small number of conditions as thousands
-of numbered variants. Inspection also found mismatched profiles: the retained
-Jaundice row listed nonspecific digestive symptoms, and a Migraines row listed
-anxiety/insomnia/dizziness. Its uploader-supplied confidence/authentication scores
-are not independent validation. The entire source is quarantined. It remains in
-the local raw cache and audit inventory, but contributes no active answers.
+**Sushruta:** three historical English translations acquired as public-domain OCR.
+Passages discuss traditional concepts, anatomy, physiology and historical medicine.
+Retrieval includes historical clinical assertions and OCR/front-matter noise.
+Those claims must be attributed as historical, not presented as modern evidence.
+The old volume attribution was corrected: Internet Archive's `00susruoft` is volume
+II (1911); `01susruoft` is I (1907), and `03susruoft` is III (1916).
 
-MedQuAD contains general biomedical questions, answers, source labels and focus
-areas. It contributes most retrieval text (about 84%), and is not Ayurveda SFT.
-The 1907 Sushruta text is historical English OCR: blank-line paragraphs are filtered
-by minimum length and split into retrieval windows. It can contain OCR errors,
-front matter and obsolete clinical assertions. It is excluded from fine-tuning.
-The four AYUSH-based notes are **project-authored paraphrases**, not an official
-government dataset or independently reviewed training labels.
+The **1,139 new SFT examples** are grounded extraction tasks from filtered historical
+paragraphs, not newly authored expert QA. Selection requires 35–180 words, primarily
+alphabetic text and domain terms; excludes dosage/administration/cure/treatment,
+surgery, toxic-substance and related prescriptive stems. This heuristic reduces
+obvious unsuitable material but is not an expert review. The four short AYUSH-based
+notes are project-authored paraphrases, not an official government dataset.
 
-## Actual prepared example
+The Healthcare table repeats numbered variants and contains mismatched symptom
+profiles. Its entire collection remains quarantined. MedQuAD is entirely excluded
+because the user requested Ayurveda alone. Raw caches are retained only for audit;
+the transfer archive includes the active processed data, not those raw archives.
 
-The JSONL row below is drawn directly from the generated split. IDs and provenance
-are metadata; the model receives only the chat messages.
+## Record format
+
+JSONL examples contain `id`, `question`, `task_type`, `provenance` and `messages`.
+Each `messages` array has the actual grounded system prompt, a user turn with
+numbered context/source and question, and a cited assistant answer. Provenance
+includes dataset/version, source reference, locator, URL and license. For example,
+a historical row's complete question/answer and provenance are:
 
 ```json
 {
-  "id": "chk_012b9398a2fd1b015c188f98",
-  "messages": [
-    {
-      "content": "What are the symptoms and Ayurvedic profile of Zoonotic Infections?",
-      "role": "user"
-    },
-    {
-      "content": "Community dataset profile (not a clinical assessment). Disease: Zoonotic Infections. Hindi name: जन्तुजन्य संक्रमण. Marathi name: प्राणीजन्य संक्रमण. Symptoms: Fever, chills, nausea, muscle aches, skin rash. Doshas: Pitta. Constitution/Prakriti: Pitta",
-      "role": "assistant"
-    }
-  ],
+  "question": "Sushruta Samhita, Volume II (1911 English translation) passage 1533",
+  "task_type": "historical_extraction",
   "provenance": {
-    "dataset": "kagglekirti123/ayurgenixai-ayurvedic-dataset/1",
-    "license": "CC BY 4.0",
-    "locator": "row=440",
-    "source_reference": "Kaggle AyurGenixAI dataset",
-    "url": "https://www.kaggle.com/datasets/kagglekirti123/ayurgenixai-ayurvedic-dataset",
+    "dataset": "public_domain_sushruta_ii/1",
+    "license": "public domain",
+    "locator": "paragraph=1533",
+    "source_reference": "Sushruta Samhita, Volume II (1911)",
+    "url": "https://archive.org/details/englishtranslati00susruoft",
     "version": 1
-  }
+  },
+  "answer": "The historical passage states: a case of the Kaphaja type of elephantiasis the principal vein (Sird) of the first toe should be opened by an experienced surgeon and the patient should be made to take at intervals the decoction (of the Kapha-sub- duing drugs) with honey. As an alternative, the patient should be advised to take the powders (Kalka) of Abhayd mixed with any officinal kind of urine. The affected locality should be constantly plastered with the paste [1]"
 }
 ```
 
-Every retrieval record additionally carries a stable chunk ID, source, locator,
-role, dataset version, license label, URL, trust tier and source reference.
-CSV line numbers and historical paragraph locators are retained for inspection.
+This format trains evidence-following and citation behavior. The answer is supplied
+in the context by design. Held-out performance therefore measures grounded response
+behavior, **not closed-book knowledge acquisition**. RAG's corpus contains the source
+passages used for held-out QA, as expected for an open-book task.
 
-## Cleaning and splits
+## Cleaning, splits and limits
 
-Archives, extracted members, ordered headers and row counts are hash/version
-checked. Exact and near-duplicate answers use 5-word shingles and a 0.90 Jaccard
-threshold. The repetitive Healthcare source is quarantined; selected prescriptive
-fields are omitted from other community sources. Rule-based safety filtering is
-applied to complete SFT answers, independently of retrieval chunk filtering. This
-leaves eight complete PDF examples instead of ten accepted retrieval records.
+Versions, archive/member hashes, CSV schemas and counts are checked. Exact and
+near-duplicate answers are removed before a deterministic question-grouped 80/10/10
+split. No normalized-question IDs overlap across splits. Related concepts can
+still cross splits; do not claim zero semantic leakage. Community profiles can
+contradict one another; they have not been adjudicated by a domain expert.
 
-SFT deduplication precedes a deterministic 80/10/10 hash split by normalized
-question. The resulting observed proportions differ slightly from those targets.
-There are zero normalized-question or exact-answer overlaps across splits.
-There are 99 question groups with multiple distinct community answers; each group
-stays in one split. These answers can disagree and have not been adjudicated by a
-clinician. Different names for a related topic can still occur across splits, so
-this is **not evidence of zero semantic leakage**. The eight PDF SFT examples all
-land in training; validation/test therefore cover the community tables only.
+The actual pinned Qwen3 tokenizer checked every example: **244–826 tokens**, with
+**zero truncation** at the 2,048-token ceiling. Training contains 748,661 input tokens
+per pass, of which **217,766 assistant tokens** are supervised. Prompts and padding
+are masked from loss. Dynamic padding avoids padding every example to 2,048.
+Two passes give about 436k supervised tokens; this is a modest adaptation dataset,
+not enough to create a medically authoritative foundation model.
 
-## Training parameters and measured limits
+Larger public candidates were reviewed but not automatically admitted: gated
+expert QA needs authorized access, modern textbook-derived QA has unclear source
+rights, and large synthetic clinical dossiers add unverified prescriptions and
+non-Ayurvedic content. Dataset size alone is not a quality criterion.
 
-- Base: pinned Qwen2.5-7B-Instruct, 7,615,616,512 parameters.
-- QLoRA: 4-bit NF4, double quantization, BF16 compute, rank 16 / alpha 32 /
-  dropout 0.05; attention and MLP projections are adapted.
-- Learning rate 0.0002, cosine schedule, 3% warmup, effective batch 16,
-  maximum sequence length 1,536, seed 3407; evaluation/checkpoint interval 25 steps.
-- The actual Qwen tokenizer measured 81–207 tokens per full example, with no
-  truncation. Training input totals 129,335 tokens, of which 84,614 are supervised
-  assistant tokens per pass. Dynamic padding masks pad labels with -100; the
-  system/user prefix is also masked. Provenance metadata is not tokenized.
-- A 100-step pilot processes roughly 1.36 passes over 1,174 examples at batch 16.
-  It is a starting experiment, not a tuned optimum. The 1,536 ceiling leaves room
-  for future longer examples; dynamic padding avoids padding every row to it.
+## Model and expected outcomes
 
-## What result to expect
+Pinned Qwen3-8B (8,190,735,360 parameters), BF16 LoRA rank 32/alpha 64/dropout .05,
+learning rate 1e-4, cosine/3% warmup, effective batch 16, maximum two passes. The
+A100/H200 runner profiles actual throughput and keeps validation-selected weights.
+Full tuning is not the default: ordinary optimizer state alone pushes total state
+beyond a single 80 GB GPU, and the data quality does not justify adapting all weights.
 
-The data and software now support a bounded training experiment and a working
-cited extraction baseline. This small, repetitive, unreviewed SFT collection may
-teach vocabulary and answer format, but cannot justify a claim of medical accuracy
-or improvement over the base model. It contains about 85k supervised training
-tokens per pass; adding more epochs may memorize labels rather than add knowledge.
-Keep retrieval for source access and judge the adapter against the same base-model
-prompts. The evaluation script saves readable base/adapter answers, references and
-reference-token F1. F1 measures wording overlap, not factual or clinical correctness.
-A domain expert should review disagreements and hallucinations before broader use.
+Expect a cited educational assistant with retrieval, refusal and abstention behavior.
+Fine-tuning may improve formatting and domain language or may not beat the base.
+No measured 8B GPU accuracy, latency, clinical safety rate or improvement is claimed.
+Run the base/adapter evaluation and API/RAG acceptance checks inside Lightning, then
+review the actual answers before connecting iOS. Reference overlap and tiny smoke
+sets cannot establish medical accuracy. A clinician should review any broader use.
 
-The ten-row retrieval calibration retained 5/5 answerable cases with 0/5 false
-support. Separate smoke queries checked doshas, prakriti, a PDF question and an
-asthma profile, plus abstention/refusal/urgent routing. These are engineering
-checks, not independent retrieval or medical benchmarks. No 7B GPU training,
-neural retrieval/support-model execution, or clinical validation has run locally.
+## Reproduction and attribution
 
-## Sources and reproduction
-
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the generated
-`attribution.json` for credits and license distinctions, including MedQuAD's
-upstream CC BY 4.0 license versus the mirror's Apache label. Kaggle uploaders'
-license labels do not independently establish rights in every medical source.
-New public Kaggle and Internet Archive download URLs were fetched again and
-matched the pinned hashes. The prepared transfer archive works without raw data
-or a Kaggle credential. A strict rebuild downloads supplemental sources, validates
-the tracked paraphrases, and uses the original Kaggle CLI or hash-valid cache for
-the other archives. No secret or model weight is included in the transfer.
+See THIRD_PARTY_NOTICES.md, configs/datasets.yaml and generated attribution.json
+for exact URLs, hashes and license labels. Kaggle uploader labels do not independently
+establish rights in every underlying text. The prepared archive needs no Kaggle
+credential. Strict rebuild uses the official Kaggle client or verified cache plus
+hash-pinned public text downloads. No user credential or model weight is bundled.

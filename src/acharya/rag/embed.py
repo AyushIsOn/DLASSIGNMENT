@@ -81,8 +81,11 @@ class BGEDenseEncoder:
 class BGEReranker:
     def __init__(self, model: ResolvedModel) -> None:
         from sentence_transformers import CrossEncoder
+        from torch.nn import Identity
 
-        self._model = CrossEncoder(str(model.path), trust_remote_code=False)
+        self._model = CrossEncoder(
+            str(model.path), trust_remote_code=False, default_activation_function=Identity()
+        )
 
     def score(self, query: str, passages: list[str]) -> list[float]:
         values = self._model.predict(

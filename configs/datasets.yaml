@@ -1,13 +1,15 @@
 version: 2
 quarantined_sources:
-  aliainaanraza/ayurveda-healthcare-dataset/2: Repeated synthetic variants and mismatched disease/symptom profiles; downloaded for audit only
+  aliainaanraza/ayurveda-healthcare-dataset/2: Repeated synthetic variants and mismatched
+    disease/symptom profiles; downloaded for audit only
+  gpreda/medquad/1: General biomedicine excluded from Ayurveda-only corpus
 sft_sources:
-  - akashkumarpr/ayurvedic-knowledge-dataset/1
-  - bundled_pdf
-  - kagglekirti123/ayurgenixai-ayurvedic-dataset/1
+- akashkumarpr/ayurvedic-knowledge-dataset/1
+- bundled_pdf
+- kagglekirti123/ayurgenixai-ayurvedic-dataset/1
 bundled_pdf:
   id: bundled_pdf
-  path: "data/dataset V1.0.pdf"
+  path: data/dataset V1.0.pdf
   sha256: ae5a30200145559dbd0b7ce25b58e6f1a31c272b98743d8a72353a0ddfbc5322
   pages: 6
   license: repository-provided
@@ -15,13 +17,15 @@ bundled_pdf:
 kaggle:
   client_version: 2.2.4
   prohibited:
-    - rcratos/ayurveda-texts-english/1
+  - rcratos/ayurveda-texts-english/1
   limits:
     maximum_archive_bytes: 268435456
     maximum_expanded_bytes: 536870912
     maximum_member_bytes: 268435456
     maximum_members: 20
-    allowed_extensions: [.csv, .xlsx]
+    allowed_extensions:
+    - .csv
+    - .xlsx
   datasets:
     gpreda/medquad/1:
       owner: gpreda
@@ -29,14 +33,20 @@ kaggle:
       version: 1
       url: https://www.kaggle.com/datasets/gpreda/medquad
       license: CC BY 4.0 (upstream); Kaggle mirror labels Apache 2.0
-      required_credit: "Asma Ben Abacha and Dina Demner-Fushman; A Question-Entailment Approach to Question Answering, BMC Bioinformatics (2019); Kaggle mirror by Gabriel Preda"
+      required_credit: Asma Ben Abacha and Dina Demner-Fushman; A Question-Entailment
+        Approach to Question Answering, BMC Bioinformatics (2019); Kaggle mirror by
+        Gabriel Preda
       trust_tier: general_medical_secondary
       expected_rows: 16412
       archive_sha256: 8d09eeb3ab4a51c3c10adc67e2523756f2e98a8c3b4960e2e8d0b158f24ff037
       members:
         medquad.csv: f9fe9e60ea69dbbd5a6987e63d041e54e2048d09e317df830b6ba3387e706d53
       primary_member: medquad.csv
-      headers: [question, answer, source, focus_area]
+      headers:
+      - question
+      - answer
+      - source
+      - focus_area
       header_sha256: 8275330550c3c6fb194d27e5ee8804d7ed9fddb56ff08219c27eacebc821300e
       field_map:
         question: question
@@ -62,7 +72,19 @@ kaggle:
         ayurvedic_knowledge_dataset.csv: f3f67afa2f88141a3252d06882961d7d01fa32cbac1f37339ca2785f0d4fedd3
         ayurvedic_knowledge_dataset.xlsx: d6391d42bae7bfadde068e2a3d01eeae480678545b5431d95e8b1e2c728c81a9
       primary_member: ayurvedic_knowledge_dataset.csv
-      headers: [Sr No, Ayurvedic Code, Ayurvedic Name, Modern Equivalent, System / Body Part, Dosha Predominance, Prognosis, Symptoms, Age Group, Gender, Treatment Principles, Source Text]
+      headers:
+      - Sr No
+      - Ayurvedic Code
+      - Ayurvedic Name
+      - Modern Equivalent
+      - System / Body Part
+      - Dosha Predominance
+      - Prognosis
+      - Symptoms
+      - Age Group
+      - Gender
+      - Treatment Principles
+      - Source Text
       header_sha256: d967c1b1216383aebe5250ec65ae9e245ae059c921b7b42e3358a80ef3b765b1
       field_map:
         Sr No: external_id
@@ -96,7 +118,28 @@ kaggle:
         ayurveda_dataset.csv: 3a9d99e3617e5fcfa5ccef0e13c89967dfcc157a01c028067626d0d525690de7
         ayurveda_dataset.xlsx: 8c8156886a377bb1e54bb6e928b7ecd906fc0cdf8606f98f28b37f37797b330d
       primary_member: ayurveda_dataset.csv
-      headers: [ID, Problem, Symptoms, Remedies, Medicines, Source, Dosha Type, Body System, Chronic/Acute, Treatment Type, Contraindications, Preventive Advice, Seasonal Suitability, Gender/Age Relevance, Confidence, Classical Texts, Modern Evidence, Institutional Endorsements, WHO Strategy Reference, Authentication Notes, Auth_Score]
+      headers:
+      - ID
+      - Problem
+      - Symptoms
+      - Remedies
+      - Medicines
+      - Source
+      - Dosha Type
+      - Body System
+      - Chronic/Acute
+      - Treatment Type
+      - Contraindications
+      - Preventive Advice
+      - Seasonal Suitability
+      - Gender/Age Relevance
+      - Confidence
+      - Classical Texts
+      - Modern Evidence
+      - Institutional Endorsements
+      - WHO Strategy Reference
+      - Authentication Notes
+      - Auth_Score
       header_sha256: f5c41ff61b06b8ebf8081bcc93a9ce9a6b7249daab0c77c427744841eb2fe9bd
       field_map:
         ID: external_id
@@ -121,10 +164,23 @@ kaggle:
         Authentication Notes: authentication_notes
         Auth_Score: auth_score
       admission:
-        confidence_floor: "0.60"
-        auth_score_floor: "0.80"
-        authentication_placeholders: [n/a, na, none, unknown, pending, not available, "-"]
-        negative_authentication_phrases: [not authenticated, unauthenticated, authentication failed, unverifiable, unverified, false]
+        confidence_floor: '0.60'
+        auth_score_floor: '0.80'
+        authentication_placeholders:
+        - n/a
+        - na
+        - none
+        - unknown
+        - pending
+        - not available
+        - '-'
+        negative_authentication_phrases:
+        - not authenticated
+        - unauthenticated
+        - authentication failed
+        - unverifiable
+        - unverified
+        - false
 supplemental:
   kagglekirti123/ayurgenixai-ayurvedic-dataset/1:
     required: false
@@ -135,7 +191,7 @@ supplemental:
     slug: ayurgenixai-ayurvedic-dataset
     version: 1
     license: CC BY 4.0
-    required_credit: "AyurGenixAI: Ayurvedic Dataset"
+    required_credit: 'AyurGenixAI: Ayurvedic Dataset'
     trust_tier: ayurveda_secondary
     expected_rows: 446
     archive_sha256: db5c518673a8aec21458b4319b7759af6a460e653bc4171f429753ea5260a248
@@ -143,7 +199,41 @@ supplemental:
       AyurGenixAI_Dataset.csv: 6b722b8784e5947b762d93a0f1a6e86650ca7af27bbe21a95ab0c84afd4f37d5
     primary_member: AyurGenixAI_Dataset.csv
     header_sha256: 2242a783dd90b292b785e4ed2e220337c71b917f9bce5c008af8dce1fef6c803
-    headers: [Disease, Hindi Name, Marathi Name, Symptoms, Diagnosis & Tests, Symptom Severity, Duration of Treatment, Medical History, Current Medications, Risk Factors, Environmental Factors, Sleep Patterns, Stress Levels, Physical Activity Levels, Family History, Dietary Habits, Allergies (Food/Env), Seasonal Variation, Age Group, Gender, Occupation and Lifestyle, Cultural Preferences, Herbal/Alternative Remedies, Ayurvedic Herbs, Formulation, Doshas, Constitution/Prakriti, Diet and Lifestyle Recommendations, Yoga & Physical Therapy, Medical Intervention, Prevention, Prognosis, Complications, Patient Recommendations]
+    headers:
+    - Disease
+    - Hindi Name
+    - Marathi Name
+    - Symptoms
+    - Diagnosis & Tests
+    - Symptom Severity
+    - Duration of Treatment
+    - Medical History
+    - Current Medications
+    - Risk Factors
+    - Environmental Factors
+    - Sleep Patterns
+    - Stress Levels
+    - Physical Activity Levels
+    - Family History
+    - Dietary Habits
+    - Allergies (Food/Env)
+    - Seasonal Variation
+    - Age Group
+    - Gender
+    - Occupation and Lifestyle
+    - Cultural Preferences
+    - Herbal/Alternative Remedies
+    - Ayurvedic Herbs
+    - Formulation
+    - Doshas
+    - Constitution/Prakriti
+    - Diet and Lifestyle Recommendations
+    - Yoga & Physical Therapy
+    - Medical Intervention
+    - Prevention
+    - Prognosis
+    - Complications
+    - Patient Recommendations
     field_map:
       Disease: disease
       Hindi Name: hindi_name
@@ -163,27 +253,61 @@ text_sources:
     url: https://ayusoft.ayush.gov.in/principles-of-ayurveda/
     title: Project-authored paraphrase of AYUSH educational pages
     version: 1
-    license: Project-authored paraphrase under repository MIT; source-page rights retained
-    required_credit: "Ayusoft, Ministry of AYUSH; Directorate of AYUSH, Government of NCT Delhi"
+    license: Project-authored paraphrase under repository MIT; source-page rights
+      retained
+    required_credit: Ayusoft, Ministry of AYUSH; Directorate of AYUSH, Government
+      of NCT Delhi
     trust_tier: project_paraphrase_of_official_education
     role_hint: educational
     sha256: 8f224a751ef4eb35aceb3b4fc75d0c473793a463c2e6b88bd362213c10585ef1
     source_reference: Ayusoft and Delhi AYUSH educational pages on Ayurvedic principles
     minimum_characters: 120
     questions:
-      - "What are the three doshas in Ayurveda?"
-      - "What do Vata, Pitta and Kapha mean in Ayurvedic theory?"
-      - "How does Ayurveda describe health and balance?"
-      - "What does prakriti mean in Ayurveda?"
-  public_domain_sushruta/1:
+    - What are the three doshas in Ayurveda?
+    - What do Vata, Pitta and Kapha mean in Ayurvedic theory?
+    - How does Ayurveda describe health and balance?
+    - What does prakriti mean in Ayurveda?
+  public_domain_sushruta_ii/1:
     relative_path: data/raw/public_domain__sushruta/1/sushruta-vol1.txt
     url: https://archive.org/details/englishtranslati00susruoft
     download_url: https://archive.org/download/englishtranslati00susruoft/englishtranslati00susruoft_djvu.txt
-    title: Sushruta Samhita, Volume 1 (1907 English translation)
+    title: Sushruta Samhita, Volume II (1911 English translation)
     version: 1
     license: public domain
-    required_credit: "Susruta; translated by Kunja Lal Bhishagratna (1907)"
+    required_credit: Susruta; translated by Kunja Lal Bhishagratna (1911)
     trust_tier: primary_historical_public_domain
     sha256: 8a597a0e153f5ee4ea036edf3d1c92319f0452e8eca5d97276f1f1041c30dd5a
-    source_reference: Sushruta Samhita, Volume 1
+    source_reference: Sushruta Samhita, Volume II (1911)
     minimum_characters: 120
+  public_domain_sushruta_i/1:
+    relative_path: data/raw/public_domain__sushruta_i/1/source.txt
+    url: https://archive.org/details/englishtranslati01susruoft
+    download_url: https://archive.org/download/englishtranslati01susruoft/englishtranslati01susruoft_djvu.txt
+    title: Sushruta Samhita, Volume I (1907 English translation)
+    version: 1
+    license: public domain
+    required_credit: Susruta; translated by Kunja Lal Bhishagratna (1907)
+    trust_tier: primary_historical_public_domain
+    sha256: 73655aa11aa38eb6224415ab90a842f66e96c10785a0cb5c64abc335c9a16f17
+    source_reference: Sushruta Samhita, Volume I (1907)
+    minimum_characters: 120
+  public_domain_sushruta_iii/1:
+    relative_path: data/raw/public_domain__sushruta_iii/1/source.txt
+    url: https://archive.org/details/englishtranslati03susruoft
+    download_url: https://archive.org/download/englishtranslati03susruoft/englishtranslati03susruoft_djvu.txt
+    title: Sushruta Samhita, Volume III (1916 English translation)
+    version: 1
+    license: public domain
+    required_credit: Susruta; translated by Kunja Lal Bhishagratna (1916)
+    trust_tier: primary_historical_public_domain
+    sha256: 4b538fa9bd158bc5bdf3df0b3facc5f622d2aeec8cd722752ec82dfab0a3f034
+    source_reference: Sushruta Samhita, Volume III (1916)
+    minimum_characters: 120
+grounded_training:
+  historical_sources:
+  - public_domain_sushruta_ii/1
+  - public_domain_sushruta_i/1
+  - public_domain_sushruta_iii/1
+  maximum_historical_records: 3000
+  minimum_words: 35
+  maximum_words: 180
