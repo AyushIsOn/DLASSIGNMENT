@@ -79,22 +79,68 @@ def test_dense_near_context_cannot_bypass_lexical_support() -> None:
 def test_full_retrieval_accepts_complementary_evidence_routes() -> None:
     base = _index()
     index = BM25Index(
-        base.fingerprint, base.corpus_fingerprint, base.config_hash, base.documents,
-        base.document_tokens, base.idf, base.average_length, base.k1, base.b,
-        "full", ((1.0, 0.0), (1.0, 0.0)),
+        base.fingerprint,
+        base.corpus_fingerprint,
+        base.config_hash,
+        base.documents,
+        base.document_tokens,
+        base.idf,
+        base.average_length,
+        base.k1,
+        base.b,
+        "full",
+        ((1.0, 0.0), (1.0, 0.0)),
     )
     # Semantic evidence compensates for a query modifier absent from the passage.
     thresholds = SupportThresholds(0.8, 0.1, 2, dense_score=0.7, rerank_score=0.8)
-    hits = retrieve(index, "alpha beta incidental", thresholds,
-                    embedder=_DenseNearEncoder(), reranker=_HighReranker())
+    hits = retrieve(
+        index,
+        "alpha beta incidental",
+        thresholds,
+        embedder=_DenseNearEncoder(),
+        reranker=_HighReranker(),
+    )
     assert hits[0].lexical_coverage < 0.8
     assert hits[0].supported
     # Strong lexical evidence can pass even when dense similarity misses its floor.
     dense_floor = SupportThresholds(0.8, 0.1, 2, dense_score=1.01, rerank_score=0.8)
-    assert retrieve(index, "alpha beta", dense_floor,
-                    embedder=_DenseNearEncoder(), reranker=_HighReranker())[0].supported
+    assert retrieve(
+        index, "alpha beta", dense_floor, embedder=_DenseNearEncoder(), reranker=_HighReranker()
+    )[0].supported
     # Neither route bypasses the BM25 anchor or reranker.
-    for blocked in (SupportThresholds(0.8, 100, 2, 0.7, 0.8),
-                    SupportThresholds(0.8, 0.1, 2, 0.7, 1.0)):
-        assert not retrieve(index, "alpha beta", blocked,
-                            embedder=_DenseNearEncoder(), reranker=_HighReranker())[0].supported
+    for blocked in (
+        SupportThresholds(0.8, 100, 2, 0.7, 0.8),
+        SupportThresholds(0.8, 0.1, 2, 0.7, 1.0),
+    ):
+        assert not retrieve(
+            index, "alpha beta", blocked, embedder=_DenseNearEncoder(), reranker=_HighReranker()
+        )[0].supported
+
+
+def test_small_source_is_reranked_even_outside_global_candidate_cutoff() -> None:
+    from dataclasses import replace
+
+    base = _index()
+    documents = (
+        *base.documents,
+        BM25Document("c", "small-source", 1, "A different question", "alpha", "educational"),
+    )
+    index = replace(
+        base,
+        documents=documents,
+        document_tokens=(*base.document_tokens, ("alpha",)),
+        mode="full",
+        dense_vectors=((1.0, 0.0), (1.0, 0.0), (0.0, 1.0)),
+    )
+
+    class RecordingReranker:
+        def __init__(self) -> None:
+            self.passages: list[str] = []
+
+        def score(self, query: str, passages: list[str]) -> list[float]:
+            self.passages = passages
+            return [0.99 for _ in passages]
+
+    reranker = RecordingReranker()
+    retrieve(index, "alpha beta", candidate_k=1, embedder=_DenseNearEncoder(), reranker=reranker)
+    assert any("A different question" in passage for passage in reranker.passages)

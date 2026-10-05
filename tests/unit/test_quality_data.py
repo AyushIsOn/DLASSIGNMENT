@@ -204,3 +204,18 @@ def test_retrieval_development_does_not_reuse_benchmark_questions(project_root: 
         for line in (project_root / "eval/independent_quality.jsonl").read_text().splitlines()
     ]
     assert not ({row.get("query") for row in development} & {row["query"] for row in benchmark})
+
+
+def test_extraction_includes_requested_limitation_with_plural_wording(project_root: Path) -> None:
+    from acharya.providers.base import ProviderContext
+    from acharya.providers.extractive import ExtractiveProvider
+
+    text = (project_root / "data/curated/ayush-principles.txt").read_text().split("\n\n")[0]
+    context = ProviderContext("one", "fixture", 1, "Dosha theory", text, "educational")
+    answer = ExtractiveProvider().answer(
+        "Are doshas traditional functional concepts or diagnoses established from this text?",
+        (context,),
+    )
+    assert answer is not None
+    assert "not a biomedical diagnosis" in answer.text
+    assert "traditional" in answer.text

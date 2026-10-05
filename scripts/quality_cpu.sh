@@ -23,6 +23,10 @@ PY
 )"
 "$WORKSPACE/.venv/bin/python" -u -m training.quality_data audit \
   --data "$DATA" --output "$OUTPUT/old-target-audit.json"
+# Rebuild embeddings from source-question metadata plus passage text. Old indexes
+# remain on disk; no model weights or training data are changed.
+"$WORKSPACE/.venv/bin/python" -u -m acharya.cli index build \
+  --workspace "$WORKSPACE" --retrieval-mode full
 "$WORKSPACE/.venv/bin/python" -u -m acharya.cli evaluate \
   --workspace "$WORKSPACE" --retrieval-mode full \
   --golden "$SOURCE/eval/retrieval_development.jsonl" --activate-calibration

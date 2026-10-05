@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from acharya.rag.embed import DenseEncoder, Reranker, cosine
-from acharya.rag.index import BM25Document, BM25Index, tokenize
+from acharya.rag.index import BM25Document, BM25Index, retrieval_passage, tokenize
 
 
 @dataclass(frozen=True)
@@ -105,8 +105,20 @@ def retrieve(
     dense_ranks = {
         position: rank for rank, position in enumerate(dense_order[:candidate_k], start=1)
     }
+    # Large homogeneous sources must not exclude every candidate from smaller ones.
+    # Add bounded per-source lexical/dense candidates without changing support gates.
+    diverse: set[int] = set()
+    for quota in (1, 2):
+        for ordered in ([item[0] for item in bm25_order], dense_order):
+            counts: dict[str, int] = {}
+            for position in ordered:
+                source = index.documents[position].source
+                if counts.get(source, 0) < quota and len(diverse) < 2 * candidate_k:
+                    diverse.add(position)
+                    counts[source] = counts.get(source, 0) + 1
     union = sorted(
-        set(bm25_ranks) | set(dense_ranks), key=lambda position: index.documents[position].chunk_id
+        set(bm25_ranks) | set(dense_ranks) | diverse,
+        key=lambda position: index.documents[position].chunk_id,
     )
     hits = []
     for position in union:
@@ -137,7 +149,8 @@ def retrieve(
                 overlap,
                 bool(
                     anchor and (lexical_support or dense_support)
-                    if index.mode == "full" else lexical_support and dense_support
+                    if index.mode == "full"
+                    else lexical_support and dense_support
                 ),
                 dense_score,
                 None,
@@ -149,7 +162,7 @@ def retrieve(
     if index.mode == "full":
         if reranker is None:
             raise RuntimeError("reranker is required for full retrieval")
-        rerank_scores = reranker.score(query, [item.document.text for item in hits])
+        rerank_scores = reranker.score(query, [retrieval_passage(item.document) for item in hits])
         if len(rerank_scores) != len(hits):
             raise RuntimeError("reranker score count mismatch")
         hits = [
@@ -195,19 +208,32 @@ def threshold_support(
 ) -> bool:
     """Apply threshold grids to cached, threshold-independent retrieval scores."""
     lexical = _lexical_supported(
-        hit.positive_query_idf, hit.informative_overlap, hit.lexical_coverage,
-        hit.bm25_score, informative_count, thresholds,
+        hit.positive_query_idf,
+        hit.informative_overlap,
+        hit.lexical_coverage,
+        hit.bm25_score,
+        informative_count,
+        thresholds,
     )
     if mode == "bm25_only":
         return lexical
-    dense = (hit.dense_score is not None and thresholds.dense_score is not None
-             and hit.dense_score >= thresholds.dense_score)
+    dense = (
+        hit.dense_score is not None
+        and thresholds.dense_score is not None
+        and hit.dense_score >= thresholds.dense_score
+    )
     if mode != "full":
         return bool(lexical and dense)
     required = 1 if informative_count == 1 else thresholds.minimum_overlap
-    anchor = (hit.positive_query_idf > 0
-              and hit.informative_overlap >= required
-              and hit.bm25_score >= thresholds.raw_score)
-    return bool(anchor and (lexical or dense)
-                and hit.rerank_score is not None and thresholds.rerank_score is not None
-                and hit.rerank_score >= thresholds.rerank_score)
+    anchor = (
+        hit.positive_query_idf > 0
+        and hit.informative_overlap >= required
+        and hit.bm25_score >= thresholds.raw_score
+    )
+    return bool(
+        anchor
+        and (lexical or dense)
+        and hit.rerank_score is not None
+        and thresholds.rerank_score is not None
+        and hit.rerank_score >= thresholds.rerank_score
+    )

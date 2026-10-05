@@ -167,6 +167,13 @@ def _payload(
     }
 
 
+def retrieval_passage(document: BM25Document) -> str:
+    """Use existing source question metadata, never evaluation reference answers."""
+    if not document.question.strip():
+        return document.text
+    return f"Question: {document.question}\nPassage: {document.text}"
+
+
 def build_index(
     settings: Settings,
     retrieval_mode: RetrievalMode = "bm25_only",
@@ -226,7 +233,8 @@ def build_index(
             else:
                 model_hashes["embedder"] = "injected-test-double"
                 model_files["embedder"] = {"injected": "injected-test-double"}
-            vectors = embedder.encode_passages([item.text for item in documents])
+            model_hashes["passage_format"] = sha256_bytes(b"source-question-and-text-v1")
+            vectors = embedder.encode_passages([retrieval_passage(item) for item in documents])
             if len(vectors) != count or any(not vector for vector in vectors):
                 raise RuntimeError("dense embedding count mismatch")
             dimensions = {len(vector) for vector in vectors}
