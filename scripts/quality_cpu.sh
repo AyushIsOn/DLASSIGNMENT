@@ -6,6 +6,9 @@ export PYTHONPATH="$SOURCE/src:$SOURCE${PYTHONPATH:+:$PYTHONPATH}"
 export CUDA_VISIBLE_DEVICES="" PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4
 cd "$SOURCE"
+(while sleep 30; do echo "CPU quality workflow still running ($(date -u +%H:%M:%S))."; done) &
+HEARTBEAT_PID=$!
+trap 'kill "$HEARTBEAT_PID" 2>/dev/null || true' EXIT
 OUTPUT="$WORKSPACE/artifacts/quality/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUTPUT"
 DATA="$("$WORKSPACE/.venv/bin/python" - "$WORKSPACE" <<'PY'
@@ -20,6 +23,9 @@ PY
 )"
 "$WORKSPACE/.venv/bin/python" -u -m training.quality_data audit \
   --data "$DATA" --output "$OUTPUT/old-target-audit.json"
+"$WORKSPACE/.venv/bin/python" -u -m acharya.cli evaluate \
+  --workspace "$WORKSPACE" --retrieval-mode full \
+  --golden "$SOURCE/eval/retrieval_development.jsonl" --activate-calibration
 "$WORKSPACE/.venv/bin/python" -u -m training.quality_eval \
   --workspace "$WORKSPACE" --benchmark "$SOURCE/eval/independent_quality.jsonl" \
   --mode cpu --output "$OUTPUT/independent-extractive"

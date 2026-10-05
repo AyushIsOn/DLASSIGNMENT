@@ -79,6 +79,14 @@ class SafetyPolicy:
         for name, patterns in self.query_patterns.items():
             if any(pattern.search(sentence) for sentence in sentences for pattern in patterns):
                 matches.add(SafetyAction(name))
+        # Older portable bundles lack a rule for personal constitutional inference.
+        constitution = re.compile(
+            r"\b(?:identify|determine|infer|assess|diagnose)\b[^.!?]{0,60}"
+            r"\b(?:my|your)\s+(?:constitutional\s+pattern|prakriti|dosha|constitution)\b"
+            r"|\bwhat is my (?:prakriti|dosha|constitution)\b"
+        )
+        if any(constitution.search(sentence) for sentence in sentences):
+            matches.add(SafetyAction.DIAGNOSIS)
         for action in self.precedence:
             if action not in matches:
                 continue

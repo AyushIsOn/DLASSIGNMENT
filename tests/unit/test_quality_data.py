@@ -192,3 +192,15 @@ def test_rewrite_produces_pending_drafts_not_approved_targets(
     assert len(seen) == 1
     rewrite(tmp_path, output, 1, 1)
     assert len(seen) == 1
+
+
+def test_retrieval_development_does_not_reuse_benchmark_questions(project_root: Path) -> None:
+    development = [
+        json.loads(line)
+        for line in (project_root / "eval/retrieval_development.jsonl").read_text().splitlines()
+    ]
+    benchmark = [
+        json.loads(line)
+        for line in (project_root / "eval/independent_quality.jsonl").read_text().splitlines()
+    ]
+    assert not ({row.get("query") for row in development} & {row["query"] for row in benchmark})

@@ -19,6 +19,7 @@ from acharya.rag.embed import (
 )
 from acharya.rag.index import BM25Index, load_index, tokenize
 from acharya.rag.retrieve import SupportThresholds, retrieve, threshold_support
+from acharya.safety import SafetyPolicy
 
 _REQUIRED_ADVERSARIAL_CATEGORIES = frozenset(
     {"typo", "entity_swap", "negation", "random", "irrelevant"}
@@ -89,9 +90,7 @@ def _queries(
 ) -> tuple[tuple[str, ...], tuple[str, ...], str, str, str, tuple[str, ...]]:
     path, source = _evaluation_source(settings, golden)
     rows = [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
     ids = [str(row.get("id", "")) for row in rows]
     if len(ids) != len(set(ids)) or any(not item for item in ids):
@@ -217,10 +216,7 @@ def calibrate(
         reranker = reranker or loaded_reranker
     lexical_index = replace(index, mode="bm25_only")
     raw_answerable = [retrieve(lexical_index, query, top_k=1)[0] for query in answerable_queries]
-    viable = [
-        hit for hit in raw_answerable
-        if hit.informative_overlap >= 2 and hit.bm25_score > 0
-    ]
+    viable = [hit for hit in raw_answerable if hit.informative_overlap >= 2 and hit.bm25_score > 0]
     # Use viable hits to set thresholds, but retain failures in the denominator.
     if not viable:
         raise RuntimeError("calibration has no viable answerable rows")
@@ -255,24 +251,62 @@ def calibrate(
     # Ranking and neural scores do not depend on support thresholds. Compute
     # each query once rather than repeating expensive inference for every grid cell.
     cached = {}
+    evaluation_path, _ = _evaluation_source(settings, golden)
+    labels = [json.loads(line) for line in evaluation_path.read_text().splitlines() if line.strip()]
+    relevant_sources = {
+        str(row["query"]): str(row["relevant_source"])
+        for row in labels
+        if row.get("query") and row.get("relevant_source")
+    }
+    policy = SafetyPolicy(settings.safety)
+    context_count = max(
+        int(settings.rag["bm25"]["top_k"]), int(settings.rag["hybrid"]["maximum_contexts"])
+    )
     queries = tuple(dict.fromkeys((*answerable_queries, *adversarial_queries)))
     for number, query in enumerate(queries, 1):
-        print(json.dumps({"event": "calibration_query_started", "query_number": number,
-                          "total_queries": len(queries)}), flush=True)
+        print(
+            json.dumps(
+                {
+                    "event": "calibration_query_started",
+                    "query_number": number,
+                    "total_queries": len(queries),
+                }
+            ),
+            flush=True,
+        )
         started = time.monotonic()
-        hit = retrieve(index, query, top_k=1, embedder=embedder, reranker=reranker)[0]
+        hits = retrieve(index, query, top_k=context_count, embedder=embedder, reranker=reranker)
         count = len({term for term in tokenize(query) if index.idf.get(term, 0.0) > 0})
-        cached[query] = (hit, count)
-        print(json.dumps({"event": "calibration_query_finished", "query_number": number,
-                          "elapsed_seconds": round(time.monotonic() - started, 2)}), flush=True)
+        cached[query] = (hits, count)
+        print(
+            json.dumps(
+                {
+                    "event": "calibration_query_finished",
+                    "query_number": number,
+                    "elapsed_seconds": round(time.monotonic() - started, 2),
+                }
+            ),
+            flush=True,
+        )
     scored = []
     for thresholds in candidates:
         answers = sum(
-            threshold_support(cached[query][0], thresholds, index.mode, cached[query][1])
+            any(
+                threshold_support(hit, thresholds, index.mode, cached[query][1])
+                and policy.role_allowed(hit.document.role)
+                and (
+                    query not in relevant_sources or hit.document.source == relevant_sources[query]
+                )
+                for hit in cached[query][0]
+            )
             for query in answerable_queries
         )
         false = sum(
-            threshold_support(cached[query][0], thresholds, index.mode, cached[query][1])
+            any(
+                threshold_support(hit, thresholds, index.mode, cached[query][1])
+                and policy.role_allowed(hit.document.role)
+                for hit in cached[query][0]
+            )
             for query in adversarial_queries
         )
         if false == 0:

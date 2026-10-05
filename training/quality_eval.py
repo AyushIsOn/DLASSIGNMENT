@@ -72,6 +72,22 @@ def evaluate(
                 "model": name,
                 "screening_passed": passed,
                 "response": response.model_dump(mode="json"),
+                "failure_stage": getattr(service, "last_failure_reason", None),
+                "retrieval_diagnostics": [
+                    {
+                        "source": hit.document.source,
+                        "chunk_id": hit.document.chunk_id,
+                        "supported": hit.supported,
+                        "bm25": hit.bm25_score,
+                        "lexical_coverage": hit.lexical_coverage,
+                        "informative_overlap": hit.informative_overlap,
+                        "dense": hit.dense_score,
+                        "rerank": hit.rerank_score,
+                        "role": hit.document.role,
+                        "text": hit.document.text[:600],
+                    }
+                    for hit in getattr(service, "last_retrieval_hits", ())
+                ],
             }
             records.append(record)
             responses.append((name, record["response"]))
