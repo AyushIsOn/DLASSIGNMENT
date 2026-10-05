@@ -11,7 +11,7 @@ from acharya.rag.prompt import grounded_chat_messages
 from training.train_qlora import _verify_model_snapshot
 
 
-def make_generator(workspace: Path, adapter: Path) -> Callable[[str, int], str]:
+def make_generator(workspace: Path, adapter: Path | None) -> Callable[[str, int], str]:
     model: Any = None
     tokenizer: Any = None
 
@@ -27,7 +27,7 @@ def make_generator(workspace: Path, adapter: Path) -> Callable[[str, int], str]:
             profile = QLoRAProfile.load(workspace)
             snapshot = workspace / "artifacts" / "model-cache" / LOCKED_REVISION
             _verify_model_snapshot(profile, snapshot)
-            tokenizer = AutoTokenizer.from_pretrained(adapter, local_files_only=True)
+            tokenizer = AutoTokenizer.from_pretrained(adapter or snapshot, local_files_only=True)
             base = AutoModelForCausalLM.from_pretrained(
                 snapshot,
                 local_files_only=True,
@@ -35,7 +35,8 @@ def make_generator(workspace: Path, adapter: Path) -> Callable[[str, int], str]:
                 torch_dtype=torch.bfloat16,
                 device_map={"": 0},
             )
-            model = PeftModel.from_pretrained(base, adapter, local_files_only=True)
+            model = (PeftModel.from_pretrained(base, adapter, local_files_only=True)
+                     if adapter is not None else base)
             model.eval()
         chat = tokenizer.apply_chat_template(
             grounded_chat_messages(prompt),

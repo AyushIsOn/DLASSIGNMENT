@@ -1,3 +1,7 @@
+> New training with the original copy targets is disabled in this revision.
+> See [QUALITY_PLAN.md](QUALITY_PLAN.md) for independent evaluation and the reviewed
+> explanatory-QA workflow. Existing adapters remain available for comparison.
+
 # AcharyaGPT
 
 Offline-first Ayurvedic knowledge retrieval with deterministic ingestion, calibrated BM25/dense/reranked retrieval, cited extractive answers, medical-safety abstention, an iOS client, optional support-verified generation, and an external A100 80 GB BF16 LoRA workflow.

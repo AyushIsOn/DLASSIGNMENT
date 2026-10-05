@@ -136,7 +136,9 @@ def training_arguments(output: Path, profile: QLoRAProfile, max_steps: int) -> d
     )
 
 
-def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
+def train(
+    workspace: Path, output: Path, max_steps: int, quality_data: Path | None = None
+) -> dict[str, object]:
     profile = QLoRAProfile.load(workspace)
     if max_steps < 1:
         raise PreflightError("max steps must be positive")
@@ -147,14 +149,43 @@ def train(workspace: Path, output: Path, max_steps: int) -> dict[str, object]:
     if not processed.is_absolute():
         processed = workspace / processed
     processed = processed.resolve()
+    quality_manifest_hash = None
+    if quality_data is None:
+        raise PreflightError(
+            "Legacy copy-target training is disabled. Supply --quality-data with reviewed QA."
+        )
+    processed = quality_data.resolve()
+    manifest_path = processed / "QUALITY_MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text())
+    benchmark = Path(__file__).resolve().parents[1] / "eval/independent_quality.jsonl"
+    if not manifest.get("training_ready") or manifest.get("benchmark_sha256") != sha256_file(
+        benchmark
+    ):
+        raise PreflightError("quality data is not approved or benchmark binding differs")
+    for split in ("train", "validation", "test"):
+        name = f"{split}.jsonl"
+        if manifest.get("files", {}).get(name) != sha256_file(processed / name):
+            raise PreflightError("quality split hash mismatch")
+    evidence = processed / "REVIEW_EVIDENCE.json"
+    if manifest.get("files", {}).get(evidence.name) != sha256_file(evidence):
+        raise PreflightError("review evidence hash mismatch")
+    quality_manifest_hash = sha256_file(manifest_path)
     train_rows = _rows(processed / "train.jsonl")
     validation_rows = _rows(processed / "validation.jsonl")
+    test_rows = _rows(processed / "test.jsonl")
+    if len(train_rows) < 500 or len(validation_rows) < 100 or len(test_rows) < 100:
+        raise PreflightError("quality dataset is below minimum split sizes")
+    from training.quality_data import audit_row
+
+    if any(audit_row(row) for row in (*train_rows, *validation_rows, *test_rows)):
+        raise PreflightError("quality dataset failed copy/OCR audit")
     run_input = {
         "qlora_sha256": profile.config_sha256,
         "preparation_fingerprint": pointer["fingerprint"],
         "train_sha256": sha256_file(processed / "train.jsonl"),
         "validation_sha256": sha256_file(processed / "validation.jsonl"),
         "planned_max_steps": max_steps,
+        "quality_manifest_sha256": quality_manifest_hash,
         "training_code_sha256": sha256_file(Path(__file__)),
     }
     run_sha256 = sha256_bytes(canonical_json(run_input))
@@ -349,6 +380,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--max-steps", type=int)
     parser.add_argument("--acquire-only", action="store_true")
+    parser.add_argument("--quality-data", type=Path)
     args = parser.parse_args()
     workspace = args.workspace.resolve()
     if args.acquire_only:
@@ -356,7 +388,7 @@ def main() -> int:
     else:
         if args.output is None or args.max_steps is None:
             parser.error("--output and --max-steps are required for training")
-        result = train(workspace, args.output.resolve(), args.max_steps)
+        result = train(workspace, args.output.resolve(), args.max_steps, args.quality_data)
     print(json.dumps(result, sort_keys=True))
     return 0
 
