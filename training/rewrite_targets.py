@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from itertools import zip_longest
 from pathlib import Path
 
 from acharya.config import canonical_json, sha256_bytes
@@ -30,6 +31,10 @@ def rewrite(workspace: Path, output: Path, limit: int, minutes: float) -> None:
         for line in (data / f"{split}.jsonl").read_text().splitlines()
         if line.strip()
     ]
+    # Interleave splits so a time-limited run cannot consume only train rows.
+    grouped = [[item for item in rows if item[0] == split]
+               for split in ("validation", "test", "train")]
+    rows = [item for batch in zip_longest(*grouped) for item in batch if item is not None]
     output.parent.mkdir(parents=True, exist_ok=True)
     completed = set()
     if output.exists():
@@ -40,7 +45,7 @@ def rewrite(workspace: Path, output: Path, limit: int, minutes: float) -> None:
             completed.add(value["source_id"])
     generator = make_generator(workspace, None)
     deadline, generated = time.monotonic() + minutes * 60, 0
-    for split, row in rows:
+    for position, (split, row) in enumerate(rows):
         if generated >= limit or time.monotonic() >= deadline:
             break
         if row["id"] in completed or row.get("task_type") == "historical_extraction":
@@ -48,6 +53,11 @@ def rewrite(workspace: Path, output: Path, limit: int, minutes: float) -> None:
         context = context_text(row)
         if "possible_OCR_or_markup_artifact" in audit_row(row):
             continue
+        task = (
+            "Explain the central concept in plain language and its limits.",
+            "Explain a relationship or distinction explicitly supported by the source.",
+            "Explain what the source does and does not establish; avoid inventing limitations.",
+        )[(position // 3) % 3]
         prompt = (
             "Create an educational question and a concise explanatory answer from the context. "
             "Return only JSON with keys question and answer. Paraphrase; do not copy a record or "
@@ -55,7 +65,7 @@ def rewrite(workspace: Path, output: Path, limit: int, minutes: float) -> None:
             "Explain traditional concepts as theory, not established biomedical fact. "
             "The answer must contain 12-180 words.\n\nHISTORY:\n(none)\n\n"
             f"CONTEXTS:\n[1] source={row['provenance']['dataset']} page=1\n{context}\n\n"
-            "QUESTION:\nWrite one original educational question and its supported answer."
+            f"QUESTION:\n{task} Write one original educational question and its supported answer."
             "\n\nANSWER:\n"
         )
         print(json.dumps({"event": "rewrite_started", "source_id": row["id"]}), flush=True)
@@ -89,6 +99,7 @@ def rewrite(workspace: Path, output: Path, limit: int, minutes: float) -> None:
                 "row": rewritten,
                 "preparation_fingerprint": pointer["fingerprint"],
                 "teacher": "locked-Qwen3-8B-base",
+                "draft_task": task,
                 "review_status": "pending",
                 "reviewer": None,
                 "automated_rejection_reasons": reasons,
