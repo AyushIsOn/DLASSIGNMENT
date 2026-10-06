@@ -23,10 +23,27 @@ PY
 )"
 "$WORKSPACE/.venv/bin/python" -u -m training.quality_data audit \
   --data "$DATA" --output "$OUTPUT/old-target-audit.json"
-# Rebuild embeddings from source-question metadata plus passage text. Old indexes
-# remain on disk; no model weights or training data are changed.
-"$WORKSPACE/.venv/bin/python" -u -m acharya.cli index build \
-  --workspace "$WORKSPACE" --retrieval-mode full
+# Reuse only a validated index with the current passage representation.
+if "$WORKSPACE/.venv/bin/python" - "$WORKSPACE" <<'PYINDEX'
+import sys
+from pathlib import Path
+from acharya.config import Settings, sha256_bytes
+from acharya.rag.index import load_index
+try:
+    index = load_index(Settings.load(Path(sys.argv[1])), expected_mode="full")
+    if (index.model_hashes or {}).get("passage_format") != sha256_bytes(b"source-question-and-text-v1"):
+        raise RuntimeError("old passage representation")
+except (OSError, ValueError, KeyError, RuntimeError) as exc:
+    print(f"Index rebuild required: {exc}")
+    sys.exit(1)
+print("Reusing validated full retrieval index.")
+PYINDEX
+then
+  :
+else
+  "$WORKSPACE/.venv/bin/python" -u -m acharya.cli index build \
+    --workspace "$WORKSPACE" --retrieval-mode full
+fi
 "$WORKSPACE/.venv/bin/python" -u -m acharya.cli evaluate \
   --workspace "$WORKSPACE" --retrieval-mode full \
   --golden "$SOURCE/eval/retrieval_development.jsonl" --activate-calibration

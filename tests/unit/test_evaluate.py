@@ -66,3 +66,46 @@ def test_calibration_runs_neural_retrieval_once_per_unique_query(
     calibrate(settings, index, embedder=Encoder(), reranker=Reranker())
     assert calls
     assert len(calls) == len(set(calls))
+
+
+def test_joint_thresholds_can_reject_high_bm25_negative_using_neural_scores() -> None:
+    from acharya.rag.evaluate import _joint_candidates
+    from acharya.rag.index import BM25Document
+    from acharya.rag.retrieve import RetrievalHit, threshold_support
+
+    document = BM25Document('id', 'source', 1, '', 'evidence', 'primary')
+    positive = RetrievalHit(document, 3.0, 5.0, 0.3, 2, False, 0.6, 0.15)
+    negative = RetrievalHit(document, 30.0, 5.0, 0.9, 2, False, 0.7, 0.01)
+    assert any(threshold_support(positive, t, 'full', 4)
+               and not threshold_support(negative, t, 'full', 4)
+               for t in _joint_candidates([positive, negative]))
+
+
+def test_score_cache_reuses_queries_and_invalidates_changed_evaluation(
+    built_workspace: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import acharya.rag.evaluate as module
+
+    settings = Settings.load(built_workspace)
+    original = module.retrieve
+    calls = []
+
+    def recording(*args, **kwargs):
+        if kwargs.get('top_k') != 1:
+            calls.append(args[1])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(module, 'retrieve', recording)
+    calibrate(settings)
+    assert not calls  # built_workspace already calibrated and persisted scores
+    path = settings.workspace / 'eval/golden.jsonl'
+    path.write_text(path.read_text() + '\n')
+    calibrate(settings)
+    assert calls
+    calls.clear()
+    calibrate(settings)
+    assert not calls
+    for cache in (settings.state_dir / 'retrieval_scores').rglob('*.json'):
+        cache.write_text('{}')
+    calibrate(settings)
+    assert calls
