@@ -109,3 +109,34 @@ def test_score_cache_reuses_queries_and_invalidates_changed_evaluation(
         cache.write_text('{}')
     calibrate(settings)
     assert calls
+
+
+def test_full_search_retains_baseline_when_expanded_grid_is_unhelpful(
+    built_workspace: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    import acharya.rag.evaluate as module
+
+    settings = Settings.load(built_workspace)
+    base = load_index(settings)
+    index = replace(base, mode="full",
+                    dense_vectors=tuple((1.0, 0.0) for _ in base.documents))
+
+    class Encoder:
+        def encode_query(self, query):
+            return [1.0, 0.0]
+
+    class Reranker:
+        def score(self, query, passages):
+            return [0.99] * len(passages)
+
+    monkeypatch.setattr(module, '_joint_candidates', lambda hits: [])
+    baseline = calibrate(settings, index, embedder=Encoder(), reranker=Reranker())
+    from acharya.rag.retrieve import SupportThresholds
+    monkeypatch.setattr(module, '_joint_candidates',
+                        lambda hits: [SupportThresholds(1.0, 1e9, 2, 1.0, 1.0)])
+    expanded = calibrate(settings, index, embedder=Encoder(), reranker=Reranker())
+    assert expanded.answerable_supported == baseline.answerable_supported
+    assert expanded.thresholds == baseline.thresholds
+    assert expanded.false_support == 0

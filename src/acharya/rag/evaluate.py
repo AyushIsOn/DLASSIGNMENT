@@ -341,8 +341,11 @@ def calibrate(
             ),
             flush=True,
         )
+    candidates.sort(
+        key=lambda t: (t.dense_score or -1.0, t.rerank_score or -1.0), reverse=True
+    )
     if index.mode == "full":
-        candidates = _joint_candidates([
+        candidates += _joint_candidates([
             hit for hits, _ in cached.values() for hit in hits
             if policy.role_allowed(hit.document.role)
         ])
@@ -371,11 +374,9 @@ def calibrate(
             scored.append((answers, thresholds))
     if not scored:
         raise RuntimeError("calibration found no zero-false-support threshold")
-    answerable_supported, thresholds = max(
-        scored,
-        key=lambda item: (item[0], item[1].dense_score or -1.0, item[1].rerank_score or -1.0,
-                          item[1].raw_score, item[1].lexical_coverage),
-    )
+    # Baseline grid comes first. Preserve its best result on ties instead of
+    # preferring extreme neural thresholds from the approximate expanded grid.
+    answerable_supported, thresholds = max(scored, key=lambda item: item[0])
     result = Calibration(
         index.fingerprint,
         index.corpus_fingerprint,
