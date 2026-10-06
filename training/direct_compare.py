@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from acharya.config import canonical_json, sha256_file
+from acharya.rag.prompt import grounded_chat_messages
 from training.quality_data import context_text, copy_fraction
 from training.runtime import make_generator
 
@@ -24,20 +25,36 @@ def select_rows(workspace: Path, limit: int) -> list[dict]:
     return rows[:limit]
 
 
+def comparison_prompt(row: dict) -> str:
+    messages = row['messages']
+    if [m['role'] for m in messages] != ['system', 'user', 'assistant']:
+        raise ValueError('comparison requires a system/user/assistant SFT row')
+    system, user = messages[0]['content'].rstrip(), messages[1]['content']
+    if not system or not user.startswith('HISTORY:\n'):
+        raise ValueError('comparison requires system instructions and grounded user history')
+    prompt = system + '\n\n' + user
+    if grounded_chat_messages(prompt) != [
+        {'role': 'system', 'content': system}, {'role': 'user', 'content': user}
+    ]:
+        raise ValueError('comparison prompt boundaries do not round-trip')
+    context_text(row)
+    return prompt
+
+
 def compare(workspace: Path, adapter: Path, output: Path, limit: int) -> None:
     if limit < 1:
         raise ValueError('limit must be positive')
     rows = select_rows(workspace, limit)
     if not rows:
         raise ValueError('No test examples')
+    prompts = [comparison_prompt(row) for row in rows]
     output.mkdir(parents=True, exist_ok=False)
     generators = {'base': make_generator(workspace, None),
                   'adapter': make_generator(workspace, adapter)}
     records, reviews, key = [], [], []
     rng = random.Random(5319)
-    for number, row in enumerate(rows, 1):
+    for number, (row, prompt) in enumerate(zip(rows, prompts, strict=True), 1):
         # Never send the copying reference answer to either generator.
-        prompt = next(m['content'] for m in row['messages'] if m['role'] == 'user')
         answers = []
         for model, generate in generators.items():
             started = time.monotonic()

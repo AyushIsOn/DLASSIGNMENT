@@ -17,6 +17,7 @@ def make_generator(workspace: Path, adapter: Path | None) -> Callable[[str, int]
 
     def generate(prompt: str, output_tokens: int) -> str:
         nonlocal model, tokenizer
+        messages = grounded_chat_messages(prompt)
         import torch
         from peft import PeftModel
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -39,7 +40,7 @@ def make_generator(workspace: Path, adapter: Path | None) -> Callable[[str, int]
                      if adapter is not None else base)
             model.eval()
         chat = tokenizer.apply_chat_template(
-            grounded_chat_messages(prompt),
+            messages,
             tokenize=False,
             enable_thinking=False,
             add_generation_prompt=True,
