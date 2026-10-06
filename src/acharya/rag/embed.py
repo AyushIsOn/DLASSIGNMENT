@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import math
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -58,11 +60,32 @@ def cosine(left: list[float], right: list[float]) -> float:
     return numerator / (left_norm * right_norm) if left_norm and right_norm else 0.0
 
 
+def retrieval_device() -> str | None:
+    device = os.environ.get("ACHARYA_RETRIEVAL_DEVICE", "auto")
+    if device not in {"auto", "cpu", "cuda"}:
+        raise ValueError("ACHARYA_RETRIEVAL_DEVICE must be auto, cpu or cuda")
+    if device == "cuda":
+        import torch
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA retrieval requested but CUDA is unavailable")
+    return None if device == "auto" else device
+
+
+def _report_device(model: Any, role: str, requested: str | None) -> None:
+    actual = str(model.device)
+    if requested is not None and actual.split(":")[0] != requested:
+        raise RuntimeError(f"{role} device mismatch: requested {requested}, got {actual}")
+    print(json.dumps({"event": "retrieval_model_loaded", "role": role,
+                      "device": actual}), flush=True)
+
+
 class BGEDenseEncoder:
     def __init__(self, model: ResolvedModel, query_prefix: str) -> None:
         from sentence_transformers import SentenceTransformer
 
-        self._model = SentenceTransformer(str(model.path), trust_remote_code=False)
+        device = retrieval_device()
+        self._model = SentenceTransformer(str(model.path), trust_remote_code=False, device=device)
+        _report_device(self._model, "embedder", device)
         self._prefix = query_prefix
 
     def _encode(self, values: list[str]) -> list[list[float]]:
@@ -83,9 +106,11 @@ class BGEReranker:
         from sentence_transformers import CrossEncoder
         from torch.nn import Identity
 
+        device = retrieval_device()
         self._model = CrossEncoder(
-            str(model.path), trust_remote_code=False, activation_fn=Identity()
+            str(model.path), trust_remote_code=False, activation_fn=Identity(), device=device
         )
+        _report_device(self._model, "reranker", device)
 
     def score(self, query: str, passages: list[str]) -> list[float]:
         values = self._model.predict(

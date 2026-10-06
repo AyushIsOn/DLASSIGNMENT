@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import os
 import time
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
+from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -17,8 +18,8 @@ from acharya.rag.embed import (
     Reranker,
     acquire_locked_model,
 )
-from acharya.rag.index import BM25Index, load_index, tokenize
-from acharya.rag.retrieve import SupportThresholds, retrieve, threshold_support
+from acharya.rag.index import BM25Document, BM25Index, load_index, tokenize
+from acharya.rag.retrieve import RetrievalHit, SupportThresholds, retrieve, threshold_support
 from acharya.safety import SafetyPolicy
 
 _REQUIRED_ADVERSARIAL_CATEGORIES = frozenset(
@@ -191,6 +192,36 @@ def load_runtime_models(
     return embedder, reranker
 
 
+def _score_grid(values: list[float]) -> list[float]:
+    """Bounded empirical grid; no benchmark answers or fixed neural cutoffs."""
+    ordered = sorted(set(values))
+    if not ordered:
+        return [0.0]
+    return sorted({0.0, *(ordered[round(i * (len(ordered) - 1) / 7)] for i in range(8))})
+
+
+def _joint_candidates(hits: list[RetrievalHit]) -> list[SupportThresholds]:
+    return [SupportThresholds(coverage, raw, 2, dense, rerank)
+            for coverage, raw, dense, rerank in product(
+                _score_grid([h.lexical_coverage for h in hits]),
+                _score_grid([h.bm25_score for h in hits]),
+                _score_grid([h.dense_score for h in hits if h.dense_score is not None]),
+                _score_grid([h.rerank_score for h in hits if h.rerank_score is not None]),
+            )]
+
+
+def _read_scores(path: Path) -> tuple[RetrievalHit, ...] | None:
+    try:
+        value = json.loads(path.read_text())
+        rows = value["hits"]
+        if value["sha256"] != sha256_bytes(canonical_json(rows)):
+            return None
+        return tuple(RetrievalHit(**{**row, "document": BM25Document.from_dict(row["document"])})
+                     for row in rows)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def calibrate(
     settings: Settings,
     index: BM25Index | None = None,
@@ -211,9 +242,7 @@ def calibrate(
     ) = _queries(settings, index, golden)
     if not answerable_queries or not adversarial_queries:
         raise RuntimeError("calibration requires answerable and adversarial rows")
-    if index.mode != "bm25_only" and embedder is None:
-        embedder, loaded_reranker = load_runtime_models(settings, index)
-        reranker = reranker or loaded_reranker
+    persist_scores = embedder is None and reranker is None
     lexical_index = replace(index, mode="bm25_only")
     raw_answerable = [retrieve(lexical_index, query, top_k=1)[0] for query in answerable_queries]
     viable = [hit for hit in raw_answerable if hit.informative_overlap >= 2 and hit.bm25_score > 0]
@@ -263,6 +292,14 @@ def calibrate(
         int(settings.rag["bm25"]["top_k"]), int(settings.rag["hybrid"]["maximum_contexts"])
     )
     queries = tuple(dict.fromkeys((*answerable_queries, *adversarial_queries)))
+    binding = sha256_bytes(canonical_json({
+        "index": index.fingerprint, "mode": index.mode, "evaluation": evaluation_hash,
+        "contexts": context_count,
+        "device": os.environ.get("ACHARYA_RETRIEVAL_DEVICE", "auto"),
+        "code": {name: sha256_file(Path(__file__).with_name(name))
+                 for name in ("retrieve.py", "embed.py", "index.py")},
+    }))
+    cache_dir = settings.state_dir / "retrieval_scores" / binding
     for number, query in enumerate(queries, 1):
         print(
             json.dumps(
@@ -275,19 +312,44 @@ def calibrate(
             flush=True,
         )
         started = time.monotonic()
-        hits = retrieve(index, query, top_k=context_count, embedder=embedder, reranker=reranker)
+        cache_path = cache_dir / (sha256_bytes(query.encode()) + ".json")
+        hits = _read_scores(cache_path) if persist_scores else None
+        reused = hits is not None
+        if hits is None:
+            if index.mode != "bm25_only" and embedder is None:
+                embedder, loaded_reranker = load_runtime_models(settings, index)
+                reranker = reranker or loaded_reranker
+            hits = tuple(retrieve(index, query, top_k=context_count,
+                                 embedder=embedder, reranker=reranker))
+            if persist_scores:
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                rows = [asdict(hit) for hit in hits]
+                temporary_cache = cache_path.with_suffix(".tmp")
+                temporary_cache.write_bytes(canonical_json({
+                    "hits": rows, "sha256": sha256_bytes(canonical_json(rows)),
+                }))
+                os.replace(temporary_cache, cache_path)
         count = len({term for term in tokenize(query) if index.idf.get(term, 0.0) > 0})
         cached[query] = (hits, count)
         print(
             json.dumps(
                 {
                     "event": "calibration_query_finished",
+                    "cache_reused": reused,
                     "query_number": number,
                     "elapsed_seconds": round(time.monotonic() - started, 2),
                 }
             ),
             flush=True,
         )
+    candidates.sort(
+        key=lambda t: (t.dense_score or -1.0, t.rerank_score or -1.0), reverse=True
+    )
+    if index.mode == "full":
+        candidates += _joint_candidates([
+            hit for hits, _ in cached.values() for hit in hits
+            if policy.role_allowed(hit.document.role)
+        ])
     scored = []
     for thresholds in candidates:
         answers = sum(
@@ -313,10 +375,9 @@ def calibrate(
             scored.append((answers, thresholds))
     if not scored:
         raise RuntimeError("calibration found no zero-false-support threshold")
-    answerable_supported, thresholds = max(
-        scored,
-        key=lambda item: (item[0], item[1].dense_score or -1.0, item[1].rerank_score or -1.0),
-    )
+    # Baseline grid comes first. Preserve its best result on ties instead of
+    # preferring extreme neural thresholds from the approximate expanded grid.
+    answerable_supported, thresholds = max(scored, key=lambda item: item[0])
     result = Calibration(
         index.fingerprint,
         index.corpus_fingerprint,

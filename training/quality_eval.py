@@ -151,7 +151,8 @@ def main() -> None:
     parser.add_argument("--benchmark", type=Path, required=True)
     parser.add_argument("--adapter", type=Path)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--mode", choices=("cpu", "gpu"), default="cpu")
+    parser.add_argument("--mode", choices=("cpu", "extractive", "gpu"), default="extractive",
+                        help="extractive: retrieval screening; gpu: base/adapter comparison")
     args = parser.parse_args()
     print(
         json.dumps(
