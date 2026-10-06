@@ -127,3 +127,17 @@ The first score-cache population still requires neural inference. The repeatedly
 inspected 21-case benchmark is now regression evidence; final quality claims
 require fresh held-out questions and blind review. No new training is authorized
 by a retrieval screening pass alone.
+
+### GPU retrieval screening
+
+Run `bash scripts/quality_gpu.sh /path/to/runtime` on the GPU instance. This
+performs the same extractive screening, without training or loading the Qwen
+generation model. A CUDA allocation preflight runs before the audit. Both BGE
+models receive an explicit CUDA device and print their actual device after load;
+a mismatch or unavailable CUDA stops execution. CPU mode remains available via
+`quality_cpu.sh`. GPU visibility assigned by the platform is preserved.
+
+GPU scores use a separate device-bound calibration cache; the first run computes
+the 33 development queries again. Valid existing passage embeddings are reused.
+BM25, threshold selection and report writing remain CPU work. Local verification
+uses mocked devices; hardware speed and CUDA execution must be verified in Lightning.

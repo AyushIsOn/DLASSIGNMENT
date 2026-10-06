@@ -3,10 +3,27 @@ set -euo pipefail
 SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE="$(cd "${1:?usage: quality_cpu.sh WORKSPACE}" && pwd)"
 export PYTHONPATH="$SOURCE/src:$SOURCE${PYTHONPATH:+:$PYTHONPATH}"
-export CUDA_VISIBLE_DEVICES="" PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false
+DEVICE="${2:-cpu}"
+case "$DEVICE" in
+  cpu) export CUDA_VISIBLE_DEVICES="" ;;
+  cuda) ;; # Preserve the GPU visibility assigned by Lightning.
+  *) echo "Device must be cpu or cuda" >&2; exit 2 ;;
+esac
+export ACHARYA_RETRIEVAL_DEVICE="$DEVICE"
+export PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false
+if [[ "$DEVICE" == cuda ]]; then
+  "$WORKSPACE/.venv/bin/python" - <<'PYGPU'
+import torch
+if not torch.cuda.is_available():
+    raise SystemExit("CUDA unavailable. Select a GPU instance before running this script.")
+x = torch.ones(1, device="cuda")
+torch.cuda.synchronize()
+print(f"GPU preflight passed: {torch.cuda.get_device_name(0)}", flush=True)
+PYGPU
+fi
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4
 cd "$SOURCE"
-(while sleep 30; do echo "CPU quality workflow still running ($(date -u +%H:%M:%S))."; done) &
+(while sleep 30; do echo "$DEVICE quality workflow still running ($(date -u +%H:%M:%S))."; done) &
 HEARTBEAT_PID=$!
 trap 'kill "$HEARTBEAT_PID" 2>/dev/null || true' EXIT
 OUTPUT="$WORKSPACE/artifacts/quality/$(date -u +%Y%m%dT%H%M%SZ)"
@@ -49,5 +66,5 @@ fi
   --golden "$SOURCE/eval/retrieval_development.jsonl" --activate-calibration
 "$WORKSPACE/.venv/bin/python" -u -m training.quality_eval \
   --workspace "$WORKSPACE" --benchmark "$SOURCE/eval/independent_quality.jsonl" \
-  --mode cpu --output "$OUTPUT/independent-extractive"
+  --mode extractive --output "$OUTPUT/independent-extractive"
 echo "Quality audit saved to $OUTPUT. No GPU training was started."

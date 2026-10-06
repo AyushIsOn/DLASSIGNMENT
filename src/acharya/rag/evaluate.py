@@ -295,6 +295,7 @@ def calibrate(
     binding = sha256_bytes(canonical_json({
         "index": index.fingerprint, "mode": index.mode, "evaluation": evaluation_hash,
         "contexts": context_count,
+        "device": os.environ.get("ACHARYA_RETRIEVAL_DEVICE", "auto"),
         "code": {name: sha256_file(Path(__file__).with_name(name))
                  for name in ("retrieve.py", "embed.py", "index.py")},
     }))
