@@ -219,3 +219,13 @@ def test_extraction_includes_requested_limitation_with_plural_wording(project_ro
     assert answer is not None
     assert "not a biomedical diagnosis" in answer.text
     assert "traditional" in answer.text
+
+
+def test_draft_audit_flags_uncited_claims_and_wrong_context() -> None:
+    uncited = "The record associates the condition with Vata and describes a traditional framework."
+    assert "target_has_missing_or_malformed_claim_citations" in audit_row(row(uncited))
+    assert "target_has_missing_or_malformed_claim_citations" in audit_row(
+        row(uncited + " [1]. Additional claims remain uncited here.")
+    )
+    assert "target_cites_unavailable_context" in audit_row(row(uncited.rstrip(".") + " [2]."))
+    assert not audit_row(row(uncited.rstrip(".") + " [1]."))
