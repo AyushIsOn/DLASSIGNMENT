@@ -153,3 +153,21 @@ in CSV, blind-review responses and a tar.gz download. Loss curves use existing
 metrics.jsonl logs only; missing logs are explicitly reported. First-question
 latency includes model loading. This is a regression benchmark with production
 fallback, not independent raw-model accuracy. No new training runs.
+
+### Rebuild explanatory targets and inspect raw model behavior
+
+`bash scripts/rebuild_quality_gpu.sh WORKSPACE` first compares 32 existing test
+prompts using identical evidence, with no retrieval, verifier, or fallback. It
+saves raw base/adapter answers and a blind review sheet. The old reference answer
+is never supplied to the model. Existing test prompts are diagnostic rather than
+fresh independent evidence of improvement.
+
+Then it drafts up to 1,500 explanations with a 90-minute drafting ceiling using
+the locked base. Train/validation/test rows are interleaved so short runs include
+held-out drafts. Tasks rotate between explanations, relationships and source
+limitations. Drafts retain source provenance and pending review status. The
+output is a review archive, not a trained or qualified dataset. Review source
+quality, semantic leakage, unsupported claims and explanatory usefulness before
+compiling. Using the same base as a drafting aid is not independent verification
+or a guarantee of improvement. The workflow never bulk-approves drafts, replaces
+the adapter, or launches training. Existing reviewed-data training gates remain.
