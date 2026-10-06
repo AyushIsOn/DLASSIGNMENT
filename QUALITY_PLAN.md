@@ -141,3 +141,15 @@ GPU scores use a separate device-bound calibration cache; the first run computes
 the 33 development queries again. Valid existing passage embeddings are reused.
 BM25, threshold selection and report writing remain CPU work. Local verification
 uses mocked devices; hardware speed and CUDA execution must be verified in Lightning.
+
+### Final GPU report for the existing adapter
+
+Install plotting support into the runtime with `uv pip install --python
+/path/to/runtime/.venv/bin/python matplotlib==3.10.3`, then run
+`bash scripts/final_gpu_report.sh /path/to/runtime`.
+This compares extractive, base and adapter production responses, preserving the
+current retrieval index and thresholds. It exports PNG/PDF charts, measurements
+in CSV, blind-review responses and a tar.gz download. Loss curves use existing
+metrics.jsonl logs only; missing logs are explicitly reported. First-question
+latency includes model loading. This is a regression benchmark with production
+fallback, not independent raw-model accuracy. No new training runs.

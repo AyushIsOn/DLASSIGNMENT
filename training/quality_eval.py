@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import time
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +62,7 @@ def evaluate(
         responses = []
         for name, service in services.items():
             # The only benchmark content supplied to RAG is the user's question.
+            started = time.monotonic()
             response = service.chat(ChatRequest(message=case["query"], history=[]))
             passed = (
                 response.outcome == case["expected_outcome"]
@@ -68,6 +70,8 @@ def evaluate(
                 and (case["expected_outcome"] != "answered" or bool(response.citations))
             )
             record = {
+                "latency_seconds": time.monotonic() - started,
+                "expected_outcome": case["expected_outcome"],
                 "id": case["id"],
                 "model": name,
                 "screening_passed": passed,
