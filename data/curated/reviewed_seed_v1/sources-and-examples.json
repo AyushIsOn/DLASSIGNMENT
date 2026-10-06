@@ -1,0 +1,413 @@
+[
+  {
+    "id": "delhi-doshas",
+    "title": "Fundamental Principles",
+    "url": "https://ayush.delhi.gov.in/ayush/fundamental-principles",
+    "split": "train",
+    "checked_on": "2026-10-06",
+    "sections": [
+      "Dosha"
+    ],
+    "context": "Delhi AYUSH describes Vata, Pitta and Kapha as traditional doshas. In this account, Vata concerns movement; Pitta concerns digestion and metabolism; Kapha concerns cohesion, lubrication and stability. These are descriptions within Ayurvedic theory.",
+    "context_kind": "Original short paraphrase checked against publisher page",
+    "review_notes": "Restricted to traditional functional descriptions. Excluded causal disease assertions and biomedical equivalences. No diagnosis inferred.",
+    "examples": [
+      {
+        "id": "delhi-doshas-1",
+        "question": "How do the three doshas differ in this account?",
+        "answer": "Vata concerns motion, Pitta the processing of food, and Kapha structural support; the passage presents traditional roles [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "comparison"
+      },
+      {
+        "id": "delhi-doshas-2",
+        "question": "Does Pitta have the same role as Kapha here?",
+        "answer": "No. The account links Pitta to digestive processing and Kapha to holding structures together and supporting stability [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "comparison"
+      },
+      {
+        "id": "delhi-doshas-3",
+        "question": "Is movement assigned to Pitta in this passage?",
+        "answer": "The passage assigns motion to Vata; it instead places digestion and metabolism within the traditional description of Pitta [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "correction"
+      },
+      {
+        "id": "delhi-doshas-4",
+        "question": "What laboratory test measures these doshas?",
+        "answer": "The passage describes theoretical roles but supplies no laboratory method; it cannot support an answer about measuring doshas [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "insufficient_evidence"
+      }
+    ],
+    "context_sha256": "aab414669f530f35367312bb4889faa2139d35e59156ad63f0ec93eac2ad9805",
+    "publisher_snapshot_sha256": "18364565771e0cdf444e614301eecc660afdf927abd08e4cd48e52d57b16502e",
+    "snapshot_redistributed": false,
+    "reuse_note": "Original brief factual paraphrases; publisher page not redistributed."
+  },
+  {
+    "id": "delhi-prakriti",
+    "title": "Prakriti",
+    "url": "https://ayush.delhi.gov.in/ayush/prakriti",
+    "split": "train",
+    "checked_on": "2026-10-06",
+    "sections": [
+      "Definition of Prakriti"
+    ],
+    "context": "Delhi AYUSH describes Prakriti as an individual constitution in Ayurvedic theory. Its seven categories reflect predominance of one dosha, a pair, or all three in equilibrium. The description encompasses physical constitution and psychological temperament.",
+    "context_kind": "Original short paraphrase checked against publisher page",
+    "review_notes": "Excluded the page's disease predictions, lifespan assertions and personal dietary recommendations. Categories are traditional classifications, not personal assessments.",
+    "examples": [
+      {
+        "id": "delhi-prakriti-1",
+        "question": "Why are there seven categories rather than only three?",
+        "answer": "The classification includes single-dosha types, paired types and a type with all three in equilibrium, yielding seven categories [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "explanation"
+      },
+      {
+        "id": "delhi-prakriti-2",
+        "question": "Does Prakriti describe only physical appearance?",
+        "answer": "No. This traditional account includes psychological temperament as well as physical constitution, so appearance alone does not exhaust its definition [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "explanation"
+      },
+      {
+        "id": "delhi-prakriti-3",
+        "question": "Is a two-dosha constitution excluded by this description?",
+        "answer": "No. Paired predominance is explicitly part of the classification, alongside single predominance and equilibrium across all three doshas [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "correction"
+      },
+      {
+        "id": "delhi-prakriti-4",
+        "question": "Can this definition identify my constitution?",
+        "answer": "It lists categories without observations about you; the supplied definition cannot establish which category applies to an individual [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "insufficient_evidence"
+      }
+    ],
+    "context_sha256": "e247d7af25af5a6c7efedc3d424bb95ea697758ea9edec7b1b98f3e8eaee313e",
+    "publisher_snapshot_sha256": "7a16195f84250bd3d3c03bd264c21f62b036e176c305c88ee54400380e6f557a",
+    "snapshot_redistributed": false,
+    "reuse_note": "Original brief factual paraphrases; publisher page not redistributed."
+  },
+  {
+    "id": "nccih-ayurveda",
+    "title": "Ayurvedic Medicine: In Depth",
+    "url": "https://www.nccih.nih.gov/health/ayurvedic-medicine-in-depth",
+    "split": "train",
+    "checked_on": "2026-10-06",
+    "sections": [
+      "What Is Ayurvedic Medicine?",
+      "Is Ayurvedic Medicine Effective?",
+      "Is Ayurvedic Medicine Safe?"
+    ],
+    "context": "NCCIH describes Ayurveda as an Indian traditional medical system involving products, diet, exercise and lifestyle. Products may include plant, animal, metal or mineral ingredients. Evidence for effectiveness is limited by small or poorly designed trials. Some preparations contain toxic amounts of lead, mercury or arsenic.",
+    "context_kind": "Original short paraphrase checked against publisher page",
+    "review_notes": "General evidence and product-risk statements only. No individual treatment decisions or blanket assertion that all products are harmful.",
+    "examples": [
+      {
+        "id": "nccih-ayurveda-1",
+        "question": "Is Ayurveda only the use of plant products?",
+        "answer": "No. This account includes food, activity and lifestyle, and describes ingredients that are not necessarily derived from plants [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "explanation"
+      },
+      {
+        "id": "nccih-ayurveda-2",
+        "question": "Do preliminary trials establish effectiveness for every condition?",
+        "answer": "No. Small samples and weak designs limit conclusions; the passage does not establish effectiveness across all health conditions [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "evidence_limits"
+      },
+      {
+        "id": "nccih-ayurveda-3",
+        "question": "Does traditional use establish that every preparation is safe?",
+        "answer": "No. NCCIH identifies potentially toxic metals in some preparations, so traditional use alone does not establish universal safety [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "evidence_limits"
+      },
+      {
+        "id": "nccih-ayurveda-4",
+        "question": "Which brand has no contamination?",
+        "answer": "The passage identifies a general risk but contains no brand testing; it cannot establish that a particular product is uncontaminated [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "insufficient_evidence"
+      }
+    ],
+    "context_sha256": "0af4653668c209e3b9349d74994121cc769c1315657ec4bf2395e119e4c06d32",
+    "publisher_snapshot_sha256": "b37b8079ce63c35140d48710f980195b96418a44395f4482bcf74eb7d77f5324",
+    "snapshot_redistributed": false,
+    "reuse_note": "Publisher marks publication public domain; photographs excluded."
+  },
+  {
+    "id": "nccih-turmeric",
+    "title": "Turmeric",
+    "url": "https://www.nccih.nih.gov/health/turmeric",
+    "split": "train",
+    "checked_on": "2026-10-06",
+    "sections": [
+      "Background",
+      "How Much Do We Know?",
+      "What Have We Learned?"
+    ],
+    "context": "NCCIH identifies curcumin as a component of turmeric, a plant used in Ayurveda. Products differ in curcumin content and added ingredients. Piperine may increase absorption. Preliminary osteoarthritis findings require better evidence. Some enhanced-absorption formulations have been associated with liver injury.",
+    "context_kind": "Original short paraphrase checked against publisher page",
+    "review_notes": "Preserved uncertainty and product specificity. No dosages, individual advice or recommendation to increase absorption.",
+    "examples": [
+      {
+        "id": "nccih-turmeric-1",
+        "question": "Are turmeric and curcumin identical?",
+        "answer": "No. Curcumin is one constituent of the plant; the terms do not describe precisely the same material [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "distinction"
+      },
+      {
+        "id": "nccih-turmeric-2",
+        "question": "Why can results differ between curcumin products?",
+        "answer": "Their contents and additional ingredients vary, and absorption can change; the passage therefore cautions against treating every formulation as equivalent [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "explanation"
+      },
+      {
+        "id": "nccih-turmeric-3",
+        "question": "Does greater absorption guarantee a safer product?",
+        "answer": "No. The passage links some enhanced-absorption formulations with liver injury; improved absorption is not a safety guarantee [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "evidence_limits"
+      },
+      {
+        "id": "nccih-turmeric-4",
+        "question": "Does this passage establish a dose for me?",
+        "answer": "It discusses formulation differences and research limitations, but supplies no basis for selecting a personal dose [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "insufficient_evidence"
+      }
+    ],
+    "context_sha256": "55667eba5f32aed75d4a862acf3430a96cc086a6d5ed14d2527fd016c679fb03",
+    "publisher_snapshot_sha256": "10688478d95f48a1e7128f914821c02d4092b3ecd6563575e10597161bac42b9",
+    "snapshot_redistributed": false,
+    "reuse_note": "Publisher marks publication public domain; photographs excluded."
+  },
+  {
+    "id": "nccih-ashwagandha",
+    "title": "Ashwagandha",
+    "url": "https://www.nccih.nih.gov/health/ashwagandha",
+    "split": "validation",
+    "checked_on": "2026-10-06",
+    "sections": [
+      "Background",
+      "How Much Do We Know?",
+      "What Have We Learned?",
+      "What Do We Know About Safety?"
+    ],
+    "context": "NCCIH notes ashwagandha's use in Ayurveda. Some preparations may help insomnia or stress, while anxiety findings remain unclear. Many studies are small and use different preparations. Long-term safety is unresolved; reports include adverse effects and rare liver injury.",
+    "context_kind": "Original short paraphrase checked against publisher page",
+    "review_notes": "Held out by source page. Distinguish stress from anxiety; do not generalize to all formulations or claim long-term safety.",
+    "examples": [
+      {
+        "id": "nccih-ashwagandha-1",
+        "question": "Does evidence for stress establish benefit for anxiety?",
+        "answer": "No. The source distinguishes these outcomes: possible stress benefit does not resolve the uncertainty about anxiety [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "evidence_limits"
+      },
+      {
+        "id": "nccih-ashwagandha-2",
+        "question": "Why does the preparation used in a study matter?",
+        "answer": "Studies use different formulations and often small groups, so a finding cannot simply be assumed to apply to every product [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "explanation"
+      },
+      {
+        "id": "nccih-ashwagandha-3",
+        "question": "Is long-term safety settled?",
+        "answer": "No. The source leaves long-term safety unresolved and mentions adverse effects; it does not support a blanket safety claim [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "evidence_limits"
+      },
+      {
+        "id": "nccih-ashwagandha-4",
+        "question": "Which exact brand was safest in a large comparison?",
+        "answer": "The passage provides no brand comparison or supporting large study, so it cannot identify such a product [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "insufficient_evidence"
+      }
+    ],
+    "context_sha256": "f9f23e54c48b8c5b249946bc8e41681cc1e328f9b2f0e670205f231df5411fae",
+    "publisher_snapshot_sha256": "264272405f345c6780650a8d763dbe66f5d1da1939cf532ce6d1e51e2b7eab0e",
+    "snapshot_redistributed": false,
+    "reuse_note": "Publisher marks publication public domain; photographs excluded."
+  },
+  {
+    "id": "nccih-boswellia",
+    "title": "Boswellia",
+    "url": "https://www.nccih.nih.gov/health/boswellia",
+    "split": "test",
+    "checked_on": "2026-10-06",
+    "sections": [
+      "Background",
+      "How Much Do We Know?",
+      "What Have We Learned?"
+    ],
+    "context": "NCCIH describes boswellia as an extract from tree resin or bark with traditional Ayurvedic uses. Most studies are small and low quality. Oral osteoarthritis findings are preliminary; topical effectiveness remains uncertain. Small asthma studies do not establish usefulness as an asthma treatment.",
+    "context_kind": "Original short paraphrase checked against publisher page",
+    "review_notes": "Held out by source page. Preserve route-specific evidence and avoid importing conclusions from other herbs or claiming efficacy.",
+    "examples": [
+      {
+        "id": "nccih-boswellia-1",
+        "question": "Do oral results establish topical effectiveness?",
+        "answer": "No. The passage separates the two routes and leaves topical effectiveness uncertain despite preliminary findings for oral use [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "evidence_limits"
+      },
+      {
+        "id": "nccih-boswellia-2",
+        "question": "Does traditional use settle whether boswellia works?",
+        "answer": "No. The source reports traditional use alongside limitations in study size and quality, rather than treating history as proof [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "explanation"
+      },
+      {
+        "id": "nccih-boswellia-3",
+        "question": "Do the asthma studies prove usefulness?",
+        "answer": "No. The studies described are small, and the source says they do not establish usefulness for asthma treatment [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "evidence_limits"
+      },
+      {
+        "id": "nccih-boswellia-4",
+        "question": "How much benefit should a patient expect?",
+        "answer": "The passage provides no reliable numerical estimate for an individual; a predicted treatment benefit cannot be derived from it [1].",
+        "review": {
+          "reviewer": "Codex (AI source-grounding review)",
+          "source_support_checked": true,
+          "citation_checked": true,
+          "clinical_expert_review": false
+        },
+        "kind": "insufficient_evidence"
+      }
+    ],
+    "context_sha256": "76e7df739ec764a3ac93b6e1fd4addf041a5095caa9a9dfcf76b17a872a17d14",
+    "publisher_snapshot_sha256": "9d2cc87a6c86c3e7119148ab362b69c69d71e3ff59ec140992c7f2e991a75b70",
+    "snapshot_redistributed": false,
+    "reuse_note": "Publisher marks publication public domain; photographs excluded."
+  }
+]

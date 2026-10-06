@@ -10,7 +10,7 @@ from typing import Any
 
 from acharya.config import canonical_json, sha256_bytes, sha256_file
 from acharya.lightning import PreflightError
-from acharya.rag.grounding import parse_generated_claims
+from acharya.rag.grounding import GroundingError, parse_generated_claims
 from acharya.safety import SafetyPolicy
 
 
@@ -39,6 +39,12 @@ def audit_row(row: dict[str, Any]) -> list[str]:
     context = context_text(row)
     answer = row["messages"][-1]["content"]
     reasons = []
+    try:
+        claims = parse_generated_claims(answer)
+        if any(claim.citation_numbers != (1,) for claim in claims):
+            reasons.append("target_cites_unavailable_context")
+    except GroundingError:
+        reasons.append("target_has_missing_or_malformed_claim_citations")
     if copy_fraction(answer, context) >= 0.65:
         reasons.append("target_is_mostly_source_copy")
     if row.get("task_type") == "historical_extraction":
