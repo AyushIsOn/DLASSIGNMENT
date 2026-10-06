@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "profile": "experimental-source-reviewed-pilot-v1",
+  "minimum_examples": {"train": 100, "validation": 30, "test": 30},
+  "minimum_source_families": {"train": 6, "validation": 3, "test": 3},
+  "maximum_examples_per_context": 5,
+  "cross_split_near_duplicate_jaccard": 0.8,
+  "minimum_task_kinds": 4,
+  "source_family_assignments": {
+    "delhi-doshas": "delhi-ayurveda-foundations",
+    "delhi-prakriti": "delhi-ayurveda-foundations",
+    "nccih-ayurveda": "nccih-ayurveda-overview",
+    "nccih-turmeric": "nccih-turmeric",
+    "nccih-ashwagandha": "nccih-ashwagandha",
+    "nccih-boswellia": "nccih-boswellia"
+  },
+  "note": "Planning floors, not a guarantee of model quality; production training gates unchanged."
+}
