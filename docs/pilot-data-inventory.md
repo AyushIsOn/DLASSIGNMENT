@@ -1,59 +1,40 @@
 # Coverage and source inventory
 
-Current corpus: `data/curated/reviewed_seed_v1/sources-and-examples.json`.
-The machine-readable snapshot is `docs/pilot-readiness.json`.
+Updated 2026-10-07. Corpus:
+`data/curated/reviewed_seed_v1/sources-and-examples.json`.
+Machine-readable status: `docs/pilot-readiness.json`.
 
-| Allocation | Examples | Distinct source families | Planned minimum |
+| Allocation | Examples | Source families | Planned minimum |
 |---|---:|---:|---|
-| Train | 16 | 3 | 100 examples / 6 families |
-| Validation | 4 | 1 | 30 examples / 3 families |
-| Test | 4 | 1 | 30 examples / 3 families |
+| Train | 40 | 6 | 100 examples / 6 families |
+| Validation | 8 | 2 | 30 examples / 3 families |
+| Test | 12 | 3 | 30 examples / 3 families |
 
-Delhi dosha and Prakriti pages belong to one foundations family. NCCIH herb pages
-are grouped by herb, not counted as independent publishers. Conceptual similarities
-between research summaries remain; these family counts are not independence claims.
+Fifteen pages supply four questions each. The foundation family includes Delhi
+dosha, Prakriti and classical-text pages plus CARI routines and Ayusoft substance
+terminology. NCCIH and LiverTox herb pages are grouped by herb. These are topic/source
+clusters, not independent publishers.
 
-Current task coverage: 2 comparisons, 2 corrections, 6 insufficient-evidence
-questions, 6 explanations, 7 evidence-limit questions, 1 distinction. Direct safety
-boundary and multi-context integration examples remain missing. Do not fill this
- gap by rephrasing the existing four questions per page.
+Task counts: 9 definitions, 8 comparisons, 12 explanations, 3 corrections,
+3 evidence interpretation, 11 evidence limits, 6 safety information,
+7 insufficient evidence and 1 distinction. Multi-context synthesis remains absent.
 
-## Expansion order
+The original 24 examples received an additional AI source review. Three wording/locator
+corrections are recorded in `source-review-20261007.md`. The 36 new examples received
+author source checks; their second review remains incomplete. No row has human
+clinical review. All 60 remain preparation material.
 
-1. Define additional source families and fix their split assignments before QA
-   authoring. Related pages about the same concept/herb stay together. Reject
-   community disease labels as evidence of mechanisms, and reject unreadable OCR.
-2. Read and log publisher, URL, section/page, date, reuse status and relevant
-   limitations. Include enough explanatory evidence to support an answer rather
-   than making it up from categorical fields. Preserve traditional/clinical scope.
-3. Author focused questions and supported answers; include examples where the
-   evidence cannot answer. Keep no more than five variants per supplied passage.
-4. Record review against source for every example. AI authorship/review remains
-   labelled. Any source defect or unverified mapping is a blocker, not resolved by
-   adding [1]. Preserve corrections and rejection reasons.
-5. Run exact and approximate duplicate checks. Lexical similarity is only a screen;
-   inspect semantic overlap and related source-page families manually.
-6. Compile only after counts, source families, review scope and evaluation contract
-   are satisfied. Create a fresh manifest; no retroactive bulk approval of drafts.
+## Next expansion rules
 
-## Source review status
+1. Assign related source topics before authoring; retain existing held-out allocation.
+2. Record the actual inspected source and its limits. Indexed text must not be
+   labelled live HTML. Use short original paraphrases when reuse rights are unclear.
+3. Add distinct evidence and question types, with at most five questions per context.
+4. Preserve qualifiers and traditional framing. Do not derive causal explanations
+   from community disease labels or turn proposed biological activity into efficacy.
+5. Record additional reviews honestly. Check semantic overlap as well as the existing
+   lexical screen, then freeze data and evaluation hashes before a GPU run.
 
-The original seed received an author source-grounding check, with citations and
-prompt structure tested. An independent second review is not complete. Parallel
-review workers were unavailable due to the service usage limit during this turn;
-no reviewer opinions were fabricated. This document and the training audit were
-completed by the main Codex agent. Expert review, if claimed later, must identify
-an actual expert and record that review.
-
-## CPU readiness command
-
-```bash
-python -m training.pilot_preflight \
-  --source data/curated/reviewed_seed_v1/sources-and-examples.json \
-  --plan configs/pilot_plan.json \
-  --rubric eval/pilot_rubric.json \
-  --output artifacts/pilot-readiness.json
-```
-
-This generates a report and never starts a GPU or marks the model ready. The
-experimental planning floor does not bypass the existing production compiler.
+Current gaps: 60 training examples, 22 validation and 18 test examples, plus one
+additional validation family. Counts alone do not qualify the corpus; final source
+review and the bounded pilot implementation are separate requirements.

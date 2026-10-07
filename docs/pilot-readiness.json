@@ -1,38 +1,45 @@
 {
   "schema_version": 1,
   "counts": {
-    "train": 16,
-    "validation": 4,
-    "test": 4
+    "train": 40,
+    "validation": 8,
+    "test": 12
   },
   "source_families": {
     "train": [
       "delhi-ayurveda-foundations",
       "nccih-ayurveda-overview",
+      "nccih-fenugreek",
+      "nccih-ginger",
+      "nccih-licorice",
       "nccih-turmeric"
     ],
     "validation": [
+      "livertox-bacopa",
       "nccih-ashwagandha"
     ],
     "test": [
+      "livertox-centella",
+      "livertox-tinospora",
       "nccih-boswellia"
     ]
   },
   "task_kinds": {
-    "comparison": 2,
-    "correction": 2,
-    "insufficient_evidence": 6,
-    "explanation": 6,
-    "evidence_limits": 7,
-    "distinction": 1
+    "comparison": 8,
+    "correction": 3,
+    "insufficient_evidence": 7,
+    "explanation": 12,
+    "evidence_limits": 11,
+    "distinction": 1,
+    "definition": 9,
+    "evidence_interpretation": 3,
+    "safety_information": 6
   },
   "blockers": [
-    "examples:test:4/30",
-    "examples:train:16/100",
-    "examples:validation:4/30",
-    "source_families:test:1/3",
-    "source_families:train:3/6",
-    "source_families:validation:1/3"
+    "examples:test:12/30",
+    "examples:train:40/100",
+    "examples:validation:8/30",
+    "source_families:validation:2/3"
   ],
   "warnings": [
     "Lexical similarity does not exclude semantic leakage.",
@@ -43,8 +50,8 @@
   "ready_to_train": false,
   "gpu_started": false,
   "hashes": {
-    "sources": "b8e74d954be7908190e4181bc0c32f68c0afd3e49d5da41620890e017463a2ac",
-    "plan": "a5784698ef6f8b639a6615370fa4d9776fe84fb52e570e551e912f3a170647e2",
+    "sources": "685a604ae6dfea70b60828b9aa91d5b7ea2cd4626cbad03b38c9a7c144af0f59",
+    "plan": "f6dcf15fcdc2ef7ac7dbc56ab84f29a9f1ce79f0ce4f5605f8d66db6d9b7e32e",
     "rubric": "265b176c3a5b09a6c9a040eb39071b430b16b683c577850b32ee5464a709145e"
   }
 }
