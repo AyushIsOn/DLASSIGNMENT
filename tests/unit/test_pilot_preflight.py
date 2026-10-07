@@ -13,9 +13,9 @@ RUBRIC = ROOT / 'eval/pilot_rubric.json'
 
 def test_small_seed_does_not_qualify_for_pilot():
     report = inspect(SOURCE, PLAN, RUBRIC)
-    assert report['counts'] == {'train': 16, 'validation': 4, 'test': 4}
-    assert len(report['source_families']['train']) == 3  # Related Delhi pages grouped.
-    assert 'examples:train:16/100' in report['blockers']
+    assert report['counts'] == {'train': 40, 'validation': 8, 'test': 12}
+    assert len(report['source_families']['train']) == 6  # Related foundations pages grouped.
+    assert 'examples:train:40/100' in report['blockers']
     assert not report['ready_to_train']
     assert not report['gpu_started']
     assert len(report['hashes']['rubric']) == 64

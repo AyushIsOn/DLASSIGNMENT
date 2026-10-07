@@ -1,7 +1,7 @@
 # AcharyaGPT retraining checklist
 
 Status: data preparation in progress. No new model has been trained or approved.
-Updated: 2026-10-06. This file is the task's record of completion, not a claim of
+Updated: 2026-10-07. This file is the task's record of completion, not a claim of
 medical accuracy. GPU execution happens in the user's Lightning environment.
 
 ## 1. Preserve and diagnose the baseline
@@ -18,7 +18,8 @@ The comparison is diagnostic, not independent accuracy measurement.
 ## 2. Prepare the replacement data
 
 - [x] Author and source-check a 24-example seed with page URLs, locators and review scope.
-- [ ] Independently inspect the seed for unsupported answers and misleading source claims.
+- [x] Obtain a second AI source review of the original seed; correct its three findings.
+      This does not establish clinical or publisher independence; expansion review remains open.
 - [x] Create a coverage inventory: concepts, comparisons, evidence limits, missing evidence,
       correction of false premises, and non-prescriptive safety boundaries.
 - [ ] Expand beyond the seed using verified educational sources; avoid community disease labels
@@ -34,7 +35,7 @@ A structural pass is not a factual review. The old 778 drafts are not an approve
 ## 3. Freeze evaluation before training
 
 - [x] Keep current seed source pages in only one split (16 train / 4 validation / 4 test).
-- [ ] Choose source-family/topic groups before expansion; keep related pages together.
+- [x] Choose source-family/topic groups before this expansion; keep related pages together.
 - [x] Create an evaluation rubric covering support, relevance, clarity, citations and safety.
 - [ ] Check all reference answers against their evidence and record review limitations.
 - [ ] Freeze dataset and rubric hashes. Do not use test answers to tune data or choose checkpoints.
@@ -75,16 +76,21 @@ No checkpoint is called improved merely because loss or reference overlap looks 
 
 ## Current next action
 
-Inventory, rubric and CPU readiness checker are implemented. Training code was
-audited; short-run evaluation cadence and whole-session budget controls still need
-implementation. Independent review workers hit a service usage limit, so the
-independent-review item remains open; no review was claimed on their behalf.
+The curriculum now contains 60 examples across 15 source pages: 40 train, 8
+validation and 12 test. Source-family counts are 6/2/3. The original 24-example
+seed received a second AI source review; its wording and locator findings were
+corrected. New examples received an author source check. The attempted second
+review of the expansion hit a service usage limit and remains unfinished.
 
-Next: expand and review the source-separated corpus, then implement the separate
-bounded pilot path. Current readiness: 16/4/4 examples across 3/1/1 source families;
-all six size/family requirements remain below the planning floors. No paid GPU run
-is required for these steps.
+Nine new pages add factual definitions, classical-text comparisons, routine
+terminology, botanical identity and qualified evidence/safety questions. No
+records from the old generated drafts were approved. Related Ayurveda foundation
+pages remain in one training family; existing held-out herbs retain their splits.
 
-Evidence artifacts: `docs/pilot-data-inventory.md`, `docs/pilot-training-audit.md`,
-`docs/pilot-evaluation.md`, `docs/pilot-readiness.json`, `eval/pilot_rubric.json`.
+Next: complete expansion and second review to reach the declared 100/30/30
+planning floors, then implement the separate bounded pilot path. Training
+preflight remains false; no paid GPU run is required for the current data work.
 
+Evidence: `docs/source-review-20261007.md`, `docs/pilot-data-inventory.md`,
+`docs/pilot-training-audit.md`, `docs/pilot-evaluation.md`,
+`docs/pilot-readiness.json`, `eval/pilot_rubric.json`.

@@ -1,6 +1,7 @@
 # Training audit, 2026-10-06
 
-Audit by Codex from source; no GPU run and no external independent reviewer.
+Audit by Codex from source; followed by an additional AI code review on 2026-10-06.
+No GPU run or external human reviewer.
 
 ## Present and usable
 
@@ -19,9 +20,10 @@ Audit by Codex from source; no GPU run and no external independent reviewer.
 ## Blockers before a small pilot
 
 1. A pilot dataset and manifest schema must be separate from production approval;
-   the current 24 examples do not satisfy either the proposed plan or production.
-   Source-family grouping and near-duplicate checks must join the current exact
-   context/question checks. A valid hash alone does not establish source review.
+   the current 60 examples do not satisfy either the proposed plan or production.
+   Source-family grouping and lexical near-duplicate checks now exist in
+   `pilot_preflight.py`; they still need binding into a separate pilot compiler.
+   A valid hash alone does not establish source review.
 2. Current evaluation/save interval is 25 optimizer steps. A short pilot ending
    earlier could finish without periodic validation or a best-checkpoint comparison.
    The pilot must compute an interval that guarantees evaluation/checkpoints,
@@ -37,6 +39,12 @@ Audit by Codex from source; no GPU run and no external independent reviewer.
    rubric, inference prompt format and training settings before comparison.
 6. Do not reuse old test answers for tuning. Source families must be assigned before
    expansion; separate source pages do not alone establish topic independence.
+7. The existing `run_a100.py` runner omits `--quality-data` and derives step counts
+   from legacy data. Do not use it for the pilot: it currently hits the intentional
+   legacy-data rejection. The new runner must use the reviewed pilot manifest.
+8. Weight checks do not verify the configured tokenizer/config Git blob hashes.
+   Include those files in the tokenizer preflight. Portable restore currently
+   targets the old `external-run/checkpoint`; give the pilot its own destination.
 
 ## Next verification
 
