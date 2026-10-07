@@ -1,59 +1,26 @@
-version: 1
-allowed_roles:
-  - educational
-  - historical
-  - preventive_general
-precedence:
-  - urgent
-  - self_harm
-  - diagnosis
-  - individual_treatment
-  - dose
-  - retrieve
+# Deterministic safety routing for the chat API (runs before and after the model).
+# urgent / self_harm / dose questions get a fixed reply without calling the model.
 responses:
-  urgent:
-    text: "If you may be in immediate danger or are thinking about harming yourself, contact local emergency services now. In the U.S. or Canada, call or text 988."
-    sha256: eec840c2acbf776a4b18a3bbfd05c7f40e247c8b7b55a6862f8f9c23750a66ff
-  refusal:
-    text: "I can provide general educational information, but I cannot diagnose a condition or recommend personalized treatment or dosing. Please consult a qualified healthcare professional."
-    sha256: c9c1c726babd48526c97bbfcd6c2be6cc192b9e62a577d70f3146dd21fea0c3c
-  abstention:
-    text: "I could not find enough supported information in the local knowledge base to answer that safely."
-    sha256: 21620a2365be0224502672f98b0018879282a581bb2bdd472c418ba54ddb90a1
+  urgent: "This sounds like a medical emergency. Please call your local emergency number (for example 112 in India or 911 in the US) or go to the nearest emergency department right away. Do not rely on Ayurvedic or home remedies for these symptoms."
+  self_harm: "I'm really sorry you're feeling this way, and you don't have to go through it alone. Please contact a crisis line right now - for example Tele-MANAS on 14416 in India or 988 in the US - or call your local emergency number, and reach out to someone you trust."
+  dose: "I can't recommend doses or a personal treatment plan. The right amount depends on your age, health, the preparation used and any other medicines you take, so please consult a qualified Ayurvedic practitioner or doctor. I can share general educational information about a herb or condition if that helps."
 query_patterns:
   urgent:
-    - "\\b(?:cannot|can't|unable to) breathe\\b"
-    - "\\b(?:trouble|difficulty) breathing\\b"
-    - "\\b(?:blue|bluish) lips?\\b"
-    - "\\blips? (?:are|is) (?:turning )?(?:blue|bluish)\\b"
-    - "\\b(?:severe )?chest pain\\b"
-    - "\\b(?:unconscious|seizure|heavy bleeding|overdose)\\b"
+  - "\\b(?:cannot|can't|cant|unable to|can not) breathe\\b"
+  - "\\b(?:trouble|difficulty|struggling) breathing\\b"
+  - "\\b(?:blue|bluish) lips?\\b|\\blips? (?:are|is) (?:turning )?(?:blue|bluish)\\b"
+  - "\\b(?:severe|crushing|sudden) chest pain\\b|\\bchest pain (?:spreading|radiating)\\b"
+  - "\\b(?:unconscious|unresponsive|seizure|convulsion|fitting|heavy bleeding|bleeding heavily)\\b"
+  - "\\b(?:overdose|swallowed (?:poison|bleach|pills)|rat poison|snake ?bite|bitten by a snake)\\b"
+  - "\\b(?:having a|had a|is having a) (?:stroke|heart attack)\\b|\\bface (?:suddenly )?droop"
   self_harm:
-    - "\\b(?:kill|hurt|harm) (?:myself|me)\\b"
-    - "\\b(?:want|plan|thinking|going) to (?:end|kill|hurt|harm) (?:myself|my life)\\b"
-    - "\\b(?:suicidal|suicide)\\b"
-  diagnosis:
-    - "\\b(?:diagnose me|do i have|what disease do i have)\\b"
-  individual_treatment:
-    - "\\b(?:what should i take|treat me|prescribe|replace my medicine)\\b"
-    - "\\b(?:stop|replace|discontinue) (?:my|your|taking) (?:medicine|medication|insulin|drug)s?\\b"
-    - "\\b(?:stop|replace|discontinue)\\b[^.!?]{0,32}\\b(?:medicine|medication|insulin|drug)s?\\b"
+  - "\\b(?:kill|hurt|harm) (?:myself|me)\\b"
+  - "\\b(?:want|plan|planning|thinking|going) to (?:end|kill|hurt|harm) (?:myself|my life|it all)\\b"
+  - "\\b(?:suicidal|suicide|end my life|don't want to live|do not want to live)\\b"
   dose:
-    - "\\b(?:what|which|give me|recommend)(?: is the)? (?:dose|dosage)\\b"
-    - "\\b(?:exact|personalized|personally) (?:dose|dosage)\\b"
-candidate_patterns:
-  dose:
-    - "\\b\\d+(?:\\.\\d+)?\\s*(?:mg|g|ml|mcg|tablets?|capsules?)\\b"
-    - "\\b(?:once|twice|three times) (?:a|per) day\\b"
-  directive:
-    - "\\b(?:you should|you must|you need to|you have to)\\b"
-    - "\\b(?:stop|replace|discontinue) (?:taking|your|the)\\b"
-  personalized_diagnosis:
-    - "\\b(?:you have|you are suffering from|your diagnosis is)\\b"
-  unsupported_universal_claim:
-    - "\\b(?:cures?|treats?)\\s+(?:every|all)\\s+(?:cancer|disease|condition)s?\\b"
-role_patterns:
-  treatment:
-    - "\\b(?:dosage|dose|treatment|panchakarma|medication|virechana|prescription|intake|avoid)\\b"
-  diagnosis:
-    - "\\b(?:diagnosis|diagnose|prognosis|condition (?:is|could be) (?:co)?related)\\b"
+  - "\\b(?:what|which|how much|how many|exact|right|correct|safe|daily|personali[sz]ed) (?:\\w+ ){0,3}(?:dose|dosage|doses)\\b"
+  - "\\bhow (?:much|many) (?:\\w+ ){0,4}(?:should|can|do|must) (?:i|we|he|she|my \\w+) (?:take|give|consume|have|eat|drink)\\b"
+  - "\\b(?:how many|what quantity of) (?:grams|mg|milligrams|ml|tablets|capsules|tsp|teaspoons|spoons)\\b"
+  - "\\b(?:dosage|dosing) (?:chart|schedule|plan)\\b"
+# Output guard: a generated answer that contains a dose is replaced by the dose reply.
+dose_in_answer: "\\b\\d+(?:\\.\\d+)?\\s*(?:-\\s*\\d+(?:\\.\\d+)?\\s*)?(?:mg|mcg|g|gm|grams?|ml|tsp|teaspoons?|tbsp|tablespoons?|capsules?|tablets?)\\b(?:\\s*(?:per day|a day|daily|twice|thrice|once|times))?"

@@ -1,0 +1,536 @@
+# Hand-written general Ayurveda concept Q&A (standard textbook definitions).
+# Each concept has 5 question paraphrases: [0..2] train, [3] validation, [4] test.
+# key_terms are used by the evaluation: each entry is "term" or "alt1|alt2".
+# Answers describe traditional Ayurvedic theory; they are educational, not medical advice.
+concepts:
+- id: ayurveda
+  questions:
+  - What is Ayurveda?
+  - Explain what Ayurveda means.
+  - What does the word Ayurveda mean?
+  - Can you give me a short introduction to Ayurveda?
+  - Define Ayurveda.
+  answer: "Ayurveda is the traditional system of medicine that originated in India more than 3,000 years ago. The name comes from the Sanskrit words 'ayus' (life) and 'veda' (knowledge), so it means 'the knowledge of life'. Its two aims are to preserve the health of the healthy and to treat disease by restoring balance between the body, mind and environment."
+  key_terms: [life, knowledge, india, balance]
+- id: tridosha
+  questions:
+  - What are the three doshas?
+  - Name the doshas in Ayurveda.
+  - What is the tridosha theory?
+  - Which are the three doshas described in Ayurveda?
+  - Explain the concept of tridosha.
+  answer: "The three doshas are Vata, Pitta and Kapha. They are the functional principles that govern all activities of the body and mind. Health is a state in which the three doshas are in balance, and disease arises when one or more of them become imbalanced."
+  key_terms: [vata, pitta, kapha, balance]
+- id: vata
+  questions:
+  - What is Vata dosha?
+  - Explain Vata in Ayurveda.
+  - What are the functions and qualities of Vata?
+  - Which elements make up Vata and what does it control?
+  - Describe the Vata dosha.
+  answer: "Vata is the dosha made of the elements space (akasha) and air (vayu). It governs all movement in the body, including breathing, circulation, nerve impulses, speech and elimination. Its qualities are dry, light, cold, rough, subtle and mobile."
+  key_terms: [air, space|ether, movement]
+- id: pitta
+  questions:
+  - What is Pitta dosha?
+  - Explain Pitta in Ayurveda.
+  - What are the functions and qualities of Pitta?
+  - Which elements make up Pitta and what does it control?
+  - Describe the Pitta dosha.
+  answer: "Pitta is the dosha made of the elements fire (agni or tejas) and water (jala). It governs transformation in the body, such as digestion, metabolism, body temperature, vision and intellect. Its qualities are hot, sharp, light, slightly oily and liquid."
+  key_terms: [fire, water, digestion|metabolism, transformation]
+- id: kapha
+  questions:
+  - What is Kapha dosha?
+  - Explain Kapha in Ayurveda.
+  - What are the functions and qualities of Kapha?
+  - Which elements make up Kapha and what does it control?
+  - Describe the Kapha dosha.
+  answer: "Kapha is the dosha made of the elements earth (prithvi) and water (jala). It gives the body structure, stability, lubrication and strength, and it supports immunity. Its qualities are heavy, slow, cool, oily, smooth and stable."
+  key_terms: [earth, water, structure|stability, lubrication]
+- id: vata-subtypes
+  questions:
+  - What are the five types of Vata?
+  - Name the subtypes of Vata dosha.
+  - Which are the five Vatas described in Ayurveda?
+  - List the sub-doshas of Vata and their locations.
+  - What are Prana, Udana, Samana, Vyana and Apana?
+  answer: "The five subtypes of Vata are Prana Vata (head and chest; breathing and swallowing), Udana Vata (throat; speech and effort), Samana Vata (stomach and intestines; digestion), Vyana Vata (heart and whole body; circulation) and Apana Vata (pelvis; elimination, menstruation and childbirth)."
+  key_terms: [prana, udana, samana, vyana, apana]
+- id: pitta-subtypes
+  questions:
+  - What are the five types of Pitta?
+  - Name the subtypes of Pitta dosha.
+  - Which are the five Pittas described in Ayurveda?
+  - List the sub-doshas of Pitta and their functions.
+  - What are Pachaka, Ranjaka, Sadhaka, Alochaka and Bhrajaka Pitta?
+  answer: "The five subtypes of Pitta are Pachaka Pitta (digestion in the stomach and small intestine), Ranjaka Pitta (liver and spleen; formation of blood), Sadhaka Pitta (heart; intellect and emotions), Alochaka Pitta (eyes; vision) and Bhrajaka Pitta (skin; complexion and temperature)."
+  key_terms: [pachaka, ranjaka, sadhaka, alochaka, bhrajaka]
+- id: kapha-subtypes
+  questions:
+  - What are the five types of Kapha?
+  - Name the subtypes of Kapha dosha.
+  - Which are the five Kaphas described in Ayurveda?
+  - List the sub-doshas of Kapha and their functions.
+  - What are Kledaka, Avalambaka, Bodhaka, Tarpaka and Shleshaka Kapha?
+  answer: "The five subtypes of Kapha are Kledaka Kapha (stomach; moistening food), Avalambaka Kapha (chest and heart; support), Bodhaka Kapha (tongue; taste), Tarpaka Kapha (head; nourishing the sense organs) and Shleshaka Kapha (joints; lubrication)."
+  key_terms: [kledaka, avalambaka, bodhaka, tarpaka, shleshaka]
+- id: sapta-dhatu
+  questions:
+  - What are the seven dhatus?
+  - Name the body tissues described in Ayurveda.
+  - What is meant by sapta dhatu?
+  - Which are the seven dhatus in Ayurveda?
+  - List the dhatus of the body.
+  answer: "The seven dhatus (body tissues) are Rasa (plasma), Rakta (blood), Mamsa (muscle), Meda (fat), Asthi (bone), Majja (marrow and nerve tissue) and Shukra (reproductive tissue). Each tissue is nourished in sequence from the one before it."
+  key_terms: [rasa, rakta, mamsa, meda, asthi, majja, shukra]
+- id: malas
+  questions:
+  - What are the malas in Ayurveda?
+  - What does mala mean in Ayurveda?
+  - Name the three main waste products described in Ayurveda.
+  - What are the trimalas?
+  - Explain the concept of mala.
+  answer: "Malas are the waste products of the body. The three main malas are purisha (faeces), mutra (urine) and sweda (sweat). Their proper formation and elimination is necessary for good health."
+  key_terms: [purisha|faeces|feces, mutra|urine, sweda|sweat, waste]
+- id: agni
+  questions:
+  - What is Agni in Ayurveda?
+  - Explain the concept of digestive fire.
+  - What does Agni mean and how many types are there?
+  - Why is Agni important in Ayurveda?
+  - What is Jatharagni?
+  answer: "Agni is the digestive and metabolic fire that transforms food into nourishment. Ayurveda describes 13 agnis: one Jatharagni (the main digestive fire), five Bhutagnis (one for each element) and seven Dhatvagnis (one for each tissue). Balanced agni is considered the root of good health."
+  key_terms: [digestive|digestion, fire, jatharagni, 13|thirteen]
+- id: agni-states
+  questions:
+  - What are the four states of Agni?
+  - Name the types of digestive fire based on its strength.
+  - What are sama, vishama, tikshna and manda agni?
+  - How does Ayurveda classify the state of digestion?
+  - Which kinds of Agni are linked to Vata, Pitta and Kapha?
+  answer: "Ayurveda describes four states of agni. Sama agni is balanced; Vishama agni is irregular and linked to Vata; Tikshna agni is sharp or excessive and linked to Pitta; and Manda agni is slow or weak and linked to Kapha."
+  key_terms: [sama, vishama, tikshna, manda]
+- id: ama
+  questions:
+  - What is Ama?
+  - What does Ama mean in Ayurveda?
+  - How does Ama form in the body?
+  - Explain the concept of Ama and why it matters.
+  - What are the signs of Ama?
+  answer: "Ama is the sticky, undigested and toxic residue that forms when agni (the digestive fire) is weak. It can block the body's channels (srotas) and is considered a root cause of many diseases. Typical signs include a coated tongue, heaviness, poor appetite and tiredness."
+  key_terms: [undigested, toxic|toxin, agni|digestive, channels|srotas]
+- id: ojas
+  questions:
+  - What is Ojas?
+  - What does Ojas mean in Ayurveda?
+  - How is Ojas related to immunity?
+  - Explain the concept of Ojas.
+  - Why is Ojas important?
+  answer: "Ojas is the refined essence of all seven dhatus. It is responsible for strength, vitality and immunity (vyadhikshamatva). When ojas is strong a person resists disease well; when it is depleted, immunity and vitality decline."
+  key_terms: [essence, immunity, strength|vitality, dhatus]
+- id: srotas
+  questions:
+  - What are srotas?
+  - Explain the channels of the body in Ayurveda.
+  - What does srotas mean?
+  - How many srotas are described in the Charaka Samhita?
+  - Name some srotas of the body.
+  answer: "Srotas are the channels of the body that carry nutrients, tissues, waste products and the doshas. The Charaka Samhita describes 13 main srotas, including Pranavaha (breath), Udakavaha (water), Annavaha (food), Rasavaha, Raktavaha, Mamsavaha, Medovaha, Asthivaha, Majjavaha, Shukravaha, Mutravaha, Purishavaha and Swedavaha srotas; women also have channels for menstruation and breast milk."
+  key_terms: [channels, pranavaha, annavaha, rasavaha, 13|thirteen]
+- id: prakriti
+  questions:
+  - What is Prakriti?
+  - What does prakriti mean in Ayurveda?
+  - Explain the concept of body constitution in Ayurveda.
+  - How is a person's prakriti determined?
+  - What are the types of prakriti?
+  answer: "Prakriti is a person's inherent constitution, set at conception by the proportion of the three doshas. It stays the same throughout life and is described as Vata, Pitta or Kapha dominant, a combination of two doshas, or a balanced type (sama prakriti). It guides diet and lifestyle recommendations."
+  key_terms: [constitution, conception|birth, vata, pitta, kapha]
+- id: vikriti
+  questions:
+  - What is Vikriti?
+  - What is the difference between prakriti and vikriti?
+  - What does vikriti mean in Ayurveda?
+  - Explain vikriti.
+  - How is vikriti related to imbalance?
+  answer: "Vikriti is the current state of the doshas in a person, which can differ from their natural constitution (prakriti). A gap between vikriti and prakriti indicates imbalance, and Ayurvedic care aims to bring vikriti back towards prakriti."
+  key_terms: [current, imbalance, prakriti]
+- id: panchamahabhuta
+  questions:
+  - What are the five elements in Ayurveda?
+  - What is panchamahabhuta?
+  - Name the five great elements described in Ayurveda.
+  - Which elements make up everything according to Ayurveda?
+  - Explain the panchamahabhuta theory.
+  answer: "The panchamahabhutas (five great elements) are Akasha (space or ether), Vayu (air), Agni or Tejas (fire), Jala or Apas (water) and Prithvi (earth). Everything in nature, including the body, is made of them; Vata comes from space and air, Pitta from fire and water, and Kapha from earth and water."
+  key_terms: [akasha|space|ether, vayu|air, agni|fire|tejas, jala|water|apas, prithvi|earth]
+- id: shad-rasa
+  questions:
+  - What are the six tastes in Ayurveda?
+  - Name the rasas described in Ayurveda.
+  - What is shad rasa?
+  - Which tastes pacify Vata, Pitta and Kapha?
+  - Explain the six rasas of Ayurveda.
+  answer: "Ayurveda describes six tastes (shad rasa) - Madhura (sweet), Amla (sour), Lavana (salty), Katu (pungent), Tikta (bitter) and Kashaya (astringent). Sweet, sour and salty pacify Vata; sweet, bitter and astringent pacify Pitta; and pungent, bitter and astringent pacify Kapha."
+  key_terms: [sweet, sour, salty, pungent, bitter, astringent]
+- id: gunas
+  questions:
+  - What are the twenty gunas?
+  - What are gunas in Ayurveda?
+  - Name the qualities described in Ayurveda.
+  - What are the gurvadi gunas?
+  - Explain the opposite pairs of qualities in Ayurveda.
+  answer: "Ayurveda describes 20 gunas (qualities) arranged in ten opposite pairs - heavy and light (guru-laghu), cold and hot (sheeta-ushna), oily and dry (snigdha-ruksha), dull and sharp (manda-tikshna), stable and mobile (sthira-chala), soft and hard (mridu-kathina), clear and sticky (vishada-picchila), smooth and rough (shlakshna-khara), subtle and gross (sukshma-sthula) and solid and liquid (sandra-drava). Like increases like, and opposites bring balance."
+  key_terms: [heavy|guru, light|laghu, hot|ushna, cold|sheeta, 20|twenty, opposite]
+- id: virya
+  questions:
+  - What is virya?
+  - What does virya mean in Ayurvedic pharmacology?
+  - Explain the potency of a substance in Ayurveda.
+  - What are the types of virya?
+  - What is ushna and sheeta virya?
+  answer: "Virya is the potency of a substance, its active heating or cooling energy. Most Ayurvedic texts describe two kinds - ushna (heating) virya and sheeta (cooling) virya."
+  key_terms: [potency, ushna|heating|hot, sheeta|cooling|cold]
+- id: vipaka
+  questions:
+  - What is vipaka?
+  - What does vipaka mean in Ayurveda?
+  - Explain the post-digestive effect of food in Ayurveda.
+  - What are the three types of vipaka?
+  - How is vipaka different from rasa?
+  answer: "Vipaka is the post-digestive effect of a substance, the taste-like effect that appears after digestion is complete. There are three vipakas - madhura (sweet), amla (sour) and katu (pungent)."
+  key_terms: [post-digestive|after digestion, sweet|madhura, sour|amla, pungent|katu]
+- id: prabhava
+  questions:
+  - What is prabhava?
+  - What does prabhava mean in Ayurveda?
+  - Explain the special action of a herb in Ayurveda.
+  - Why can two herbs with the same properties act differently?
+  - Define prabhava.
+  answer: "Prabhava is the special or unique action of a substance that cannot be explained by its taste (rasa), potency (virya) or post-digestive effect (vipaka). It explains why two substances with similar properties can act differently."
+  key_terms: [special|unique, rasa, virya, vipaka]
+- id: panchakarma
+  questions:
+  - What is Panchakarma?
+  - What are the five purification therapies of Ayurveda?
+  - Explain Panchakarma treatment.
+  - Name the procedures included in Panchakarma.
+  - What does Panchakarma involve?
+  answer: "Panchakarma is Ayurveda's set of five purification (shodhana) therapies - Vamana (therapeutic emesis), Virechana (therapeutic purgation), Basti (medicated enema), Nasya (nasal administration of medicine) and Raktamokshana (bloodletting). It is preceded by preparatory procedures (purvakarma) such as snehana (oleation) and svedana (sudation), and it should only be done under qualified supervision."
+  key_terms: [vamana, virechana, basti, nasya, raktamokshana]
+- id: purvakarma
+  questions:
+  - What is purvakarma?
+  - What are the preparatory procedures before Panchakarma?
+  - Explain snehana and svedana.
+  - What is done before Panchakarma?
+  - Why are oleation and sudation done before Panchakarma?
+  answer: "Purvakarma are the preparatory procedures done before panchakarma. The two main ones are snehana (internal and external oleation with medicated oil or ghee) and svedana (sudation or sweating therapy), which loosen and mobilise the doshas so that they can be eliminated."
+  key_terms: [snehana|oleation, svedana|swedana|sudation, preparatory]
+- id: shodhana-shamana
+  questions:
+  - What is the difference between shodhana and shamana?
+  - What is shodhana therapy?
+  - What is shamana therapy?
+  - Explain the two main lines of treatment in Ayurveda.
+  - How do purification and palliative treatments differ in Ayurveda?
+  answer: "Shodhana is purification therapy that expels aggravated doshas from the body, mainly through panchakarma. Shamana is palliative therapy that pacifies the doshas within the body using herbs, diet, lifestyle, fasting (langhana) and digestive stimulation (deepana-pachana), without eliminating them."
+  key_terms: [purification, expel|eliminate, palliative, pacif]
+- id: dinacharya
+  questions:
+  - What is dinacharya?
+  - What is the Ayurvedic daily routine?
+  - What does dinacharya include?
+  - Describe an ideal day according to Ayurveda.
+  - Why is a daily routine important in Ayurveda?
+  answer: "Dinacharya is the Ayurvedic daily routine for maintaining health. It includes waking early (in brahma muhurta), cleaning the teeth and tongue, oil pulling, self-massage with oil (abhyanga), exercise, bathing, regular meals and going to bed on time."
+  key_terms: [daily routine|daily, abhyanga|massage, early|wake]
+- id: ritucharya
+  questions:
+  - What is ritucharya?
+  - What is the Ayurvedic seasonal routine?
+  - How should lifestyle change with the seasons in Ayurveda?
+  - Explain ritucharya.
+  - Why does Ayurveda recommend seasonal routines?
+  answer: "Ritucharya is the Ayurvedic seasonal routine - adjusting diet and lifestyle to each of the six seasons (ritus) so that the doshas, which accumulate and become aggravated with the seasons, stay in balance."
+  key_terms: [season, six|6, diet, doshas]
+- id: trayopastambha
+  questions:
+  - What are the three pillars of life in Ayurveda?
+  - What is trayopastambha?
+  - Name the three supports of life according to Ayurveda.
+  - What are ahara, nidra and brahmacharya?
+  - Which three factors support health in Ayurveda?
+  answer: "The three supporting pillars of life (trayopastambha) are ahara (diet), nidra (sleep) and brahmacharya (disciplined, moderate conduct, including regulation of sexual activity). Good health depends on using all three properly."
+  key_terms: [ahara|diet|food, nidra|sleep, brahmacharya]
+- id: ashtanga-ayurveda
+  questions:
+  - What are the eight branches of Ayurveda?
+  - What is Ashtanga Ayurveda?
+  - Name the specialities of Ayurveda.
+  - Which are the eight divisions of Ayurveda?
+  - List the branches of Ayurvedic medicine.
+  answer: "Ashtanga Ayurveda has eight branches - Kayachikitsa (internal medicine), Kaumarabhritya or Bala chikitsa (paediatrics), Bhuta vidya or Graha chikitsa (psychiatry), Shalakya tantra (diseases of the head, eyes, ears, nose and throat), Shalya tantra (surgery), Agada tantra (toxicology), Rasayana (rejuvenation) and Vajikarana (reproductive health and aphrodisiacs)."
+  key_terms: [kayachikitsa, shalya, shalakya, agada, rasayana, vajikarana]
+- id: classical-texts
+  questions:
+  - What are the main classical texts of Ayurveda?
+  - What are the Brihat Trayi and Laghu Trayi?
+  - Name the great classics of Ayurveda.
+  - Which books are considered the foundation of Ayurveda?
+  - List the important Ayurvedic texts.
+  answer: "The three great classics (Brihat Trayi) are the Charaka Samhita (internal medicine), the Sushruta Samhita (surgery) and the Ashtanga Hridaya of Vagbhata. The three lesser classics (Laghu Trayi) are the Madhava Nidana (diagnosis), the Sharangadhara Samhita (pharmacy and formulations) and the Bhavaprakasha (materia medica)."
+  key_terms: [charaka, sushruta|susruta, ashtanga|astanga, madhava, sharangadhara, bhavaprakasha]
+- id: charaka-samhita
+  questions:
+  - What is the Charaka Samhita?
+  - Who wrote the Charaka Samhita?
+  - What is the Charaka Samhita known for?
+  - Explain the importance of the Charaka Samhita.
+  - What subject does the Charaka Samhita mainly cover?
+  answer: "The Charaka Samhita is the foundational classical text of Ayurvedic internal medicine (kayachikitsa). It was redacted by Charaka from the earlier teachings of Agnivesha, and together with the Sushruta Samhita and the Ashtanga Hridaya it forms the Brihat Trayi."
+  key_terms: [internal medicine|kayachikitsa, agnivesha, brihat trayi]
+- id: sushruta-samhita
+  questions:
+  - What is the Sushruta Samhita?
+  - Who was Sushruta?
+  - What is the Sushruta Samhita famous for?
+  - Explain the importance of the Sushruta Samhita.
+  - Which classical Ayurvedic text deals with surgery?
+  answer: "The Sushruta Samhita is the classical Ayurvedic text on surgery (shalya tantra), attributed to Sushruta. It describes surgical instruments and procedures, including early plastic surgery such as rhinoplasty, together with anatomy and the management of many diseases."
+  key_terms: [surgery|surgical|shalya, sushruta|susruta, rhinoplasty|plastic]
+- id: rasayana
+  questions:
+  - What is Rasayana?
+  - What is rejuvenation therapy in Ayurveda?
+  - What does Rasayana aim to do?
+  - Explain the Rasayana branch of Ayurveda.
+  - What is a rasayana herb?
+  answer: "Rasayana is the branch of Ayurveda devoted to rejuvenation. It aims to promote longevity, strength, immunity, memory and overall vitality through specific herbs, diet and conduct (achara rasayana)."
+  key_terms: [rejuvenation, longevity, immunity|strength]
+- id: nidana-panchaka
+  questions:
+  - What is Nidana Panchaka?
+  - What are the five tools of diagnosis in Ayurveda?
+  - Explain nidana, purvarupa, rupa, upashaya and samprapti.
+  - How does Ayurveda study the development of a disease?
+  - What is samprapti in Ayurveda?
+  answer: "Nidana Panchaka is the fivefold framework Ayurveda uses to understand a disease - nidana (causes), purvarupa (early warning signs), rupa (manifest signs and symptoms), upashaya (what relieves or aggravates the condition) and samprapti (pathogenesis, the way the disease develops)."
+  key_terms: [nidana, purvarupa, rupa, upashaya, samprapti]
+- id: shat-kriyakala
+  questions:
+  - What are the six stages of disease in Ayurveda?
+  - What is shat kriyakala?
+  - How does a disease progress according to Sushruta?
+  - Name the stages of disease development in Ayurveda.
+  - What are sanchaya, prakopa and prasara?
+  answer: "Sushruta describes six stages of disease development (shat kriyakala) - sanchaya (accumulation of the dosha), prakopa (aggravation), prasara (spread), sthana samshraya (localisation in a tissue), vyakti (manifestation of symptoms) and bheda (differentiation or complications). Treatment is easier at the earlier stages."
+  key_terms: [sanchaya, prakopa, prasara, sthana samshraya, vyakti, bheda]
+- id: ashtavidha-pariksha
+  questions:
+  - What is Ashtavidha Pariksha?
+  - What is the eightfold examination in Ayurveda?
+  - How does an Ayurvedic doctor examine a patient?
+  - Name the eight methods of examination in Ayurveda.
+  - What does Ashtavidha Pariksha include?
+  answer: "Ashtavidha Pariksha is the eightfold clinical examination of Ayurveda - nadi (pulse), mutra (urine), mala (stool), jihva (tongue), shabda (voice), sparsha (touch and skin), drik (eyes) and akriti (overall appearance and build)."
+  key_terms: [nadi|pulse, mutra|urine, mala|stool, jihva|tongue, shabda|voice, sparsha|touch, drik|eye, akriti|appearance]
+- id: nadi-pariksha
+  questions:
+  - What is nadi pariksha?
+  - What is pulse diagnosis in Ayurveda?
+  - How is the pulse examined in Ayurveda?
+  - What do Vata, Pitta and Kapha pulses feel like?
+  - Explain Ayurvedic pulse reading.
+  answer: "Nadi pariksha is Ayurvedic pulse examination, usually felt at the radial artery of the wrist. It is used to assess the state of the doshas; a Vata pulse is traditionally described as moving like a snake, a Pitta pulse like a frog and a Kapha pulse like a swan."
+  key_terms: [pulse, wrist|radial, snake, frog, swan]
+- id: triphala
+  questions:
+  - What is Triphala?
+  - Which fruits are in Triphala?
+  - What is Triphala made of?
+  - Explain the Ayurvedic formulation Triphala.
+  - What is Triphala traditionally used for?
+  answer: "Triphala is a classical Ayurvedic formulation made from three fruits in equal parts - Amalaki (Indian gooseberry), Bibhitaki and Haritaki. It is traditionally used as a gentle digestive and bowel tonic and as a rasayana."
+  key_terms: [amalaki|amla|gooseberry, bibhitaki, haritaki, three]
+- id: trikatu
+  questions:
+  - What is Trikatu?
+  - What are the ingredients of Trikatu?
+  - What does Trikatu mean?
+  - Explain the formulation Trikatu.
+  - What is Trikatu used for in Ayurveda?
+  answer: "Trikatu means 'three pungents'. It is a classical Ayurvedic combination of Shunthi (dry ginger), Maricha (black pepper) and Pippali (long pepper), traditionally used to kindle agni and reduce Kapha and ama."
+  key_terms: [ginger|shunthi, black pepper|maricha, long pepper|pippali]
+- id: ashwagandha
+  questions:
+  - What is Ashwagandha?
+  - What is Ashwagandha used for in Ayurveda?
+  - Explain the Ayurvedic herb Ashwagandha.
+  - What are the traditional uses of Ashwagandha?
+  - Which dosha does Ashwagandha balance?
+  answer: "Ashwagandha (Withania somnifera) is an important Ayurvedic herb classified as a rasayana (rejuvenative). It is traditionally used to support strength, stamina, sleep and resilience to stress, and it mainly pacifies Vata and Kapha."
+  key_terms: [withania, rasayana|rejuvenat, stress, strength|stamina]
+- id: tulsi
+  questions:
+  - What is Tulsi used for in Ayurveda?
+  - What is holy basil in Ayurveda?
+  - Explain the Ayurvedic herb Tulsi.
+  - What are the traditional uses of Tulsi?
+  - Which dosha does Tulsi balance?
+  answer: "Tulsi (holy basil, Ocimum sanctum) is a sacred plant in India and an important Ayurvedic herb. It is traditionally used for cough, colds and other respiratory complaints and to support immunity, and it is considered to pacify Kapha and Vata."
+  key_terms: [holy basil|ocimum, cough|respiratory|cold, immunity, kapha]
+- id: haridra
+  questions:
+  - What is turmeric used for in Ayurveda?
+  - What is Haridra?
+  - Explain the Ayurvedic uses of turmeric.
+  - What are the traditional uses of Haridra?
+  - Why is turmeric important in Ayurveda?
+  answer: "Haridra (turmeric, Curcuma longa) is one of the most widely used Ayurvedic herbs. It is traditionally used for skin conditions, wound healing and inflammation and as a blood purifier, and it is considered to balance all three doshas, especially Kapha."
+  key_terms: [curcuma|turmeric|haridra, skin, wound|inflammation, blood]
+- id: brahmi
+  questions:
+  - What is Brahmi?
+  - What is Brahmi used for in Ayurveda?
+  - Explain the Ayurvedic herb Brahmi.
+  - Which herb is used for memory in Ayurveda?
+  - What is a medhya rasayana?
+  answer: "Brahmi (Bacopa monnieri) is an Ayurvedic herb traditionally used as a medhya rasayana - a tonic for the mind that supports memory, learning and calmness."
+  key_terms: [bacopa|brahmi, medhya, memory]
+- id: neem
+  questions:
+  - What is Neem used for in Ayurveda?
+  - Explain the Ayurvedic herb Neem.
+  - What are the traditional uses of Neem?
+  - What is Nimba in Ayurveda?
+  - Which dosha does Neem pacify?
+  answer: "Neem or Nimba (Azadirachta indica) is a bitter Ayurvedic herb traditionally used for skin diseases, as a blood purifier and for its antimicrobial action. It mainly pacifies Pitta and Kapha."
+  key_terms: [azadirachta|neem|nimba, bitter, skin, pitta]
+- id: guduchi
+  questions:
+  - What is Guduchi?
+  - What is Giloy used for in Ayurveda?
+  - Explain the Ayurvedic herb Guduchi.
+  - What are the traditional uses of Giloy?
+  - Why is Guduchi called a rasayana?
+  answer: "Guduchi or Giloy (Tinospora cordifolia) is an Ayurvedic herb regarded as a rasayana. It is traditionally used to support immunity and in the management of fevers, and it balances all three doshas."
+  key_terms: [tinospora|giloy|guduchi, immunity, fever, rasayana]
+- id: shatavari
+  questions:
+  - What is Shatavari?
+  - What is Shatavari used for in Ayurveda?
+  - Explain the Ayurvedic herb Shatavari.
+  - What are the traditional uses of Shatavari?
+  - Which herb is a tonic for the female reproductive system in Ayurveda?
+  answer: "Shatavari (Asparagus racemosus) is an Ayurvedic herb traditionally used as a rejuvenating tonic for the female reproductive system and to support lactation. It is cooling and pacifies Vata and Pitta."
+  key_terms: [asparagus|shatavari, female|women, reproductive, lactation|milk]
+- id: ghee
+  questions:
+  - Why is ghee important in Ayurveda?
+  - What is ghrita in Ayurveda?
+  - How is ghee used in Ayurvedic medicine?
+  - What are the benefits of ghee according to Ayurveda?
+  - What is a medicated ghee?
+  answer: "Ghee (clarified butter, ghrita) is valued in Ayurveda for nourishing the tissues, kindling agni without aggravating Pitta, and acting as a carrier that takes herbs into the tissues. Many classical medicines are medicated ghees, such as Maha Tiktaka Ghrita."
+  key_terms: [clarified butter|ghrita|ghee, agni|digestion, carrier|vehicle]
+- id: abhyanga
+  questions:
+  - What is Abhyanga?
+  - What is Ayurvedic oil massage?
+  - What are the benefits of Abhyanga?
+  - Explain self-massage in Ayurveda.
+  - Why is oil massage recommended in Ayurveda?
+  answer: "Abhyanga is Ayurvedic massage with warm oil, ideally done daily as part of dinacharya. It is said to nourish the skin and tissues, calm Vata, improve circulation and promote sound sleep."
+  key_terms: [oil, massage, vata]
+- id: nasya
+  questions:
+  - What is Nasya?
+  - What is nasal therapy in Ayurveda?
+  - How is Nasya done?
+  - Explain the Panchakarma procedure Nasya.
+  - Which conditions is Nasya used for?
+  answer: "Nasya is the administration of medicated oils, powders or decoctions through the nose. It is one of the five panchakarma therapies and is used especially for conditions of the head, neck and sense organs (urdhva jatrugata roga)."
+  key_terms: [nose|nasal, panchakarma, head]
+- id: basti
+  questions:
+  - What is Basti?
+  - What is medicated enema therapy in Ayurveda?
+  - What are the types of Basti?
+  - Explain the Panchakarma procedure Basti.
+  - Why is Basti important for Vata disorders?
+  answer: "Basti is medicated enema therapy, one of the five panchakarma procedures. It is considered the most important treatment for Vata disorders. Its two main types are anuvasana basti (oil-based) and niruha or asthapana basti (decoction-based)."
+  key_terms: [enema, vata, anuvasana, niruha|asthapana]
+- id: virechana
+  questions:
+  - What is Virechana?
+  - What is therapeutic purgation in Ayurveda?
+  - Which dosha does Virechana eliminate?
+  - Explain the Panchakarma procedure Virechana.
+  - When is Virechana used?
+  answer: "Virechana is therapeutic purgation, one of the panchakarma therapies. It is mainly used to eliminate excess Pitta from the body, for example in some skin diseases and digestive disorders."
+  key_terms: [purgation|purgative|laxative, pitta]
+- id: vamana
+  questions:
+  - What is Vamana?
+  - What is therapeutic emesis in Ayurveda?
+  - Which dosha does Vamana eliminate?
+  - Explain the Panchakarma procedure Vamana.
+  - When is Vamana used?
+  answer: "Vamana is therapeutic emesis (controlled, induced vomiting), one of the panchakarma therapies. It is mainly used to eliminate excess Kapha, for example in some respiratory and skin conditions, and it is done only under expert supervision."
+  key_terms: [emesis|vomiting, kapha]
+- id: raktamokshana
+  questions:
+  - What is Raktamokshana?
+  - What is bloodletting therapy in Ayurveda?
+  - What is leech therapy in Ayurveda?
+  - Explain the procedure Raktamokshana.
+  - When is Raktamokshana used?
+  answer: "Raktamokshana is therapeutic bloodletting, described especially by Sushruta as a purification therapy. It is used for disorders of blood and Pitta, such as some skin diseases, and its methods include leech therapy (jalaukavacharana)."
+  key_terms: [bloodletting|blood, leech, pitta]
+- id: manas-gunas
+  questions:
+  - What are Sattva, Rajas and Tamas?
+  - What are the qualities of the mind in Ayurveda?
+  - What are the manas doshas?
+  - Explain the three gunas of the mind.
+  - How does Ayurveda describe the mind?
+  answer: "Sattva, Rajas and Tamas are the three qualities (gunas) of the mind. Sattva stands for clarity, balance and purity; Rajas for activity and restlessness; and Tamas for inertia and dullness. Rajas and Tamas are called the manas doshas because their excess disturbs the mind."
+  key_terms: [sattva, rajas, tamas, mind]
+- id: health-definition
+  questions:
+  - How does Ayurveda define health?
+  - What is swastha according to Ayurveda?
+  - What does it mean to be healthy in Ayurveda?
+  - What is the Ayurvedic definition of a healthy person?
+  - According to Sushruta, who is a healthy person?
+  answer: "According to Sushruta, a person is healthy (swastha) when the doshas, agni and dhatus are in balance, the malas are eliminated properly, and the soul, senses and mind are content and clear."
+  key_terms: [swastha, doshas, agni, dhatus, malas, mind]
+- id: viruddha-ahara
+  questions:
+  - What is viruddha ahara?
+  - What are incompatible foods in Ayurveda?
+  - Which food combinations should be avoided according to Ayurveda?
+  - Explain the concept of food incompatibility in Ayurveda.
+  - Why does Ayurveda say not to mix milk and fish?
+  answer: "Viruddha ahara means incompatible food combinations, which Ayurveda says can disturb digestion and the doshas and lead to ama. Classical examples include milk with fish, milk with sour fruits, and honey that is heated or mixed with an equal quantity of ghee."
+  key_terms: [incompatible, combination, milk, fish|honey]
+- id: about-acharyagpt
+  questions:
+  - Who are you?
+  - What is AcharyaGPT?
+  - What can you help me with?
+  - What are you able to do?
+  - Introduce yourself.
+  answer: "I am AcharyaGPT, an educational assistant fine-tuned on Ayurvedic knowledge. I can explain Ayurvedic concepts such as the doshas, dhatus and agni, and describe conditions from Ayurvedic texts - their modern equivalents, dosha involvement, symptoms, prognosis and classical treatment principles. I am not a substitute for a qualified doctor or Ayurvedic practitioner."
+  key_terms: [acharyagpt, ayurved, educational]
+- id: greeting
+  questions:
+  - Hello
+  - Hi there!
+  - Good morning
+  - Hey, how are you?
+  - Namaste
+  answer: "Namaste! I'm AcharyaGPT. Ask me about Ayurvedic concepts such as Vata, Pitta and Kapha, or about a condition such as Amlapitta or Eka Kushtha, and I'll explain what the Ayurvedic texts say."
+  key_terms: [acharyagpt, ayurved]

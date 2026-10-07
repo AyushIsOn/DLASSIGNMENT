@@ -44,6 +44,32 @@ struct ChatResponse: Codable, Equatable {
     let mode: String
     let warning: String?
     let outcome: String
+    let model: String?
+    let latencyMs: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case answer, citations, scores, mode, warning, outcome, model
+        case latencyMs = "latency_ms"
+    }
+
+    init(answer: String, citations: [Citation], scores: [RetrievalScores], mode: String,
+         warning: String?, outcome: String, model: String? = nil, latencyMs: Int? = nil) {
+        self.answer = answer
+        self.citations = citations
+        self.scores = scores
+        self.mode = mode
+        self.warning = warning
+        self.outcome = outcome
+        self.model = model
+        self.latencyMs = latencyMs
+    }
+}
+
+struct HealthStatus: Codable, Equatable {
+    let status: String
+    let ready: Bool
+    let model: String?
+    let detail: String?
 }
 
 struct APIErrorEnvelope: Codable, Equatable {

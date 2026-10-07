@@ -1,78 +1,56 @@
-"""FastAPI application for the offline Gate A service."""
+"""FastAPI app used by the iOS client: GET /health/live, GET /health/ready, POST /v1/chat."""
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from acharya.providers.runtime import configured_provider
-from acharya.rag.service import RAGService, ServiceUnavailable
 from acharya.schemas import ChatRequest, ChatResponse, HealthResponse
+from acharya.service import ChatService, ModelUnavailable
 
 
-def create_app(
-    workspace: Path | str | None = None, *, service: RAGService | None = None
-) -> FastAPI:
-    root = workspace or os.environ.get("ACHARYA_WORKSPACE") or Path(__file__).resolve().parents[2]
-    if service is None:
-        provider = configured_provider(Path(root), os.environ)
-        service = RAGService(
-            root,
-            generative_provider=provider,
-            generation_mode="optional" if provider is not None else "extractive",
-        )
-    app = FastAPI(title="AcharyaGPT", version="0.1.0")
+def error(status: int, code: str, message: str) -> JSONResponse:
+    return JSONResponse(status_code=status, content={"error": {"code": code, "message": message}})
+
+
+def create_app(service: ChatService) -> FastAPI:
+    app = FastAPI(title="AcharyaGPT", version="1.0.0")
     app.state.service = service
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"],
+                       allow_headers=["*"])
 
     @app.exception_handler(RequestValidationError)
-    async def validation_error(_request: Request, error: RequestValidationError) -> JSONResponse:
-        invalid_history = any("history" in item.get("loc", ()) for item in error.errors())
-        message = (
-            "history must contain complete alternating user/assistant pairs"
-            if invalid_history
-            else "request validation failed"
-        )
-        return JSONResponse(
-            status_code=422,
-            content={"error": {"code": "invalid_request", "message": message}},
-        )
+    async def invalid(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        history = any("history" in item.get("loc", ()) for item in exc.errors())
+        message = ("history must contain complete alternating user/assistant pairs"
+                   if history else "request validation failed")
+        return error(422, "invalid_request", message)
 
-    @app.exception_handler(ServiceUnavailable)
-    async def unavailable(_request: Request, _error: ServiceUnavailable) -> JSONResponse:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error": {
-                    "code": "retrieval_not_ready",
-                    "message": "calibrated local retrieval is unavailable",
-                }
-            },
-        )
+    @app.exception_handler(ModelUnavailable)
+    async def unavailable(_request: Request, exc: ModelUnavailable) -> JSONResponse:
+        return error(503, "model_unavailable", f"The model is not available: {exc}")
+
+    def health(live: bool) -> HealthResponse:
+        ok, detail = (True, None) if live else service.generator.ready()
+        return HealthResponse(status="live" if live else ("ready" if ok else "not_ready"),
+                              ready=ok, model=service.generator.name,
+                              backend=type(service.generator).__name__,
+                              knowledge_base_entries=len(service.index.cards), detail=detail)
 
     @app.get("/health/live", response_model=HealthResponse)
-    async def health_live() -> HealthResponse:
-        return service.health(live_only=True)
+    def health_live() -> HealthResponse:
+        return health(live=True)
 
     @app.get("/health/ready", response_model=HealthResponse)
-    async def health_ready() -> HealthResponse:
-        response = service.health()
-        if not response.ready:
-            return JSONResponse(status_code=503, content=response.model_dump(mode="json"))  # type: ignore[return-value]
-        return response
+    def health_ready() -> JSONResponse:
+        response = health(live=False)
+        return JSONResponse(status_code=200 if response.ready else 503,
+                            content=response.model_dump(mode="json"))
 
     @app.post("/v1/chat", response_model=ChatResponse)
-    def chat(request: ChatRequest) -> ChatResponse:
+    def chat(request: ChatRequest) -> ChatResponse:  # sync: runs in FastAPI's threadpool
         return service.chat(request)
 
     return app
-
-
-def app_factory() -> FastAPI:
-    return create_app()
-
-
-app = app_factory()

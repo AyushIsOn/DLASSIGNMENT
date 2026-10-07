@@ -7,17 +7,21 @@ final class ChatViewModel: ObservableObject {
     @Published private(set) var chatMessages: [ChatMessage] = []
     @Published private(set) var isWaitingForResponse = false
     @Published private(set) var errorMessage: String?
+    /// The question currently being answered (shown right away, before the reply arrives).
+    @Published private(set) var pendingMessage: String?
 
-    private let client: ChatAPIClientProtocol
+    private let makeClient: () throws -> ChatAPIClientProtocol
     private var requestTask: Task<Void, Never>?
     private var retryMessage: String?
     private var lastSubmittedMessage: String?
 
+    /// Pass a client in tests; the app builds one per request from the saved server URL,
+    /// so changing the URL in settings takes effect immediately.
     init(client: ChatAPIClientProtocol? = nil) {
         if let client {
-            self.client = client
+            makeClient = { client }
         } else {
-            self.client = (try? ChatAPIClient()) ?? UnavailableChatAPIClient()
+            makeClient = { try ChatAPIClient() }
         }
     }
 
@@ -38,11 +42,27 @@ final class ChatViewModel: ObservableObject {
         requestTask?.cancel()
     }
 
+    func clearConversation() {
+        guard !isWaitingForResponse else { return }
+        chatMessages = []
+        errorMessage = nil
+        retryMessage = nil
+        lastSubmittedMessage = nil
+    }
+
     private func submit(_ rawMessage: String, isRetry: Bool = false) {
         let trimmed = rawMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isWaitingForResponse else { return }
         guard isRetry || trimmed.caseInsensitiveCompare(lastSubmittedMessage ?? "") != .orderedSame else {
             errorMessage = "That message was already sent."
+            return
+        }
+        let client: ChatAPIClientProtocol
+        do {
+            client = try makeClient()
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            retryMessage = trimmed
             return
         }
 
@@ -51,6 +71,7 @@ final class ChatViewModel: ObservableObject {
         errorMessage = nil
         retryMessage = nil
         lastSubmittedMessage = trimmed
+        pendingMessage = trimmed
 
         requestTask = Task { [weak self] in
             guard let self else { return }
@@ -72,6 +93,7 @@ final class ChatViewModel: ObservableObject {
                 errorMessage = error.localizedDescription
                 retryMessage = trimmed
             }
+            pendingMessage = nil
             isWaitingForResponse = false
             requestTask = nil
         }
@@ -89,11 +111,5 @@ final class ChatViewModel: ObservableObject {
             index += 2
         }
         return Array(history.suffix(20))
-    }
-}
-
-private struct UnavailableChatAPIClient: ChatAPIClientProtocol {
-    func send(_ request: ChatRequest) async throws -> ChatResponse {
-        throw ChatAPIError.invalidBackendURL
     }
 }

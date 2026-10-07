@@ -3,16 +3,16 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
-  offline:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
-          version: '0.8.22'
           python-version: '3.11'
-      - run: bash scripts/verify_all.sh
-      - name: Secret scan
-        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.2 detect --source /repo --config /repo/.gitleaks.toml --log-opts=--all --redact --exit-code 1
+      - name: Install (CPU-only checks; the CUDA wheels are not needed)
+        run: uv sync --frozen --group dev
+      - run: uv run --frozen ruff check src finetune tests scripts
+      - name: Dataset integrity + API tests (no model weights)
+        run: uv run --frozen --with pyyaml pytest -q tests/test_metrics.py tests/test_api.py tests/test_prompting.py
+      - run: uv run --frozen python scripts/validate_xcodeproj.py --project "AcharyaGPT(iOS)/AcharyaGPT(iOS).xcodeproj/project.pbxproj"

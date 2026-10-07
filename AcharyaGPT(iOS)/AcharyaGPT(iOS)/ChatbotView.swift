@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChatbotView: View {
     @State private var hasScrolled = false
+    @State private var showSettings = false
     @StateObject private var chatViewModel: ChatViewModel
     @FocusState private var isFocused: Bool
 
@@ -21,24 +22,57 @@ struct ChatbotView: View {
                             .frame(width: 60, height: 51)
                             .padding()
                         IntroductionView()
+                        if chatViewModel.chatMessages.isEmpty && chatViewModel.pendingMessage == nil {
+                            SuggestionsView { suggestion in
+                                chatViewModel.message = suggestion
+                                chatViewModel.sendMessage()
+                            }
+                        }
                         ForEach(chatViewModel.chatMessages) { message in
                             messageView(message)
+                        }
+                        if let pending = chatViewModel.pendingMessage {
+                            messageView(ChatMessage(role: .user, text: pending))
+                            TypingIndicator()
                         }
                         Color.clear.frame(height: 130).id("bottom")
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .onChange(of: chatViewModel.chatMessages) { _, messages in
                     guard !messages.isEmpty else { return }
                     withAnimation { proxy.scrollTo("bottom") }
                 }
+                .onChange(of: chatViewModel.pendingMessage) { _, pending in
+                    guard pending != nil else { return }
+                    withAnimation { proxy.scrollTo("bottom") }
+                }
                 .coordinateSpace(name: "scroll")
                 .safeAreaInset(edge: .top) { Color.clear.frame(height: 70) }
-                .overlay(AcharyaNavigationView(hasScrolled: $hasScrolled))
+                .overlay(
+                    AcharyaNavigationView(
+                        hasScrolled: $hasScrolled,
+                        onNewChat: { chatViewModel.clearConversation() },
+                        onSettings: { showSettings = true }
+                    )
+                )
             }
             inputPanel.frame(maxWidth: .infinity)
         }
         .background(Color(red: 0.05, green: 0.06, blue: 0.06))
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+    }
+
+    private func modeLabel(_ mode: String) -> String {
+        switch mode {
+        case "finetuned_rag": "Fine-tuned + RAG"
+        case "finetuned": "Fine-tuned"
+        case "safety": "Safety"
+        default: mode
+        }
     }
 
     private func messageView(_ message: ChatMessage) -> some View {
@@ -55,16 +89,24 @@ struct ChatbotView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let response = message.response {
                 HStack {
-                    StatusBadge(text: response.outcome, color: response.outcome == "answered" ? .green : .orange)
-                    StatusBadge(text: response.mode, color: .blue)
-                    if response.outcome == "urgent" || response.outcome == "refused" {
-                        StatusBadge(text: "safety", color: .red)
+                    StatusBadge(text: modeLabel(response.mode),
+                                color: response.mode == "safety" ? .red : .teal)
+                    if response.outcome == "urgent" {
+                        StatusBadge(text: "urgent", color: .red)
+                    }
+                    if let latency = response.latencyMs, response.mode != "safety" {
+                        Text(String(format: "%.1f s", Double(latency) / 1000))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 if let warning = response.warning {
                     StatusBadge(text: warning, color: .yellow)
                 }
-                ForEach(response.citations) { CitationView(citation: $0) }
+                if !response.citations.isEmpty {
+                    Text("Sources").font(.caption.bold()).foregroundStyle(.secondary)
+                    ForEach(response.citations) { CitationView(citation: $0) }
+                }
             }
         }
         .padding(14)
@@ -93,6 +135,11 @@ struct ChatbotView: View {
                     Text(error).font(.caption).foregroundStyle(.red)
                     Spacer()
                     Button("Retry") { chatViewModel.retry() }
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
                 }
                 .padding(.horizontal)
             }
@@ -107,7 +154,10 @@ struct ChatbotView: View {
                     Button("Cancel") { chatViewModel.cancel() }
                         .frame(height: 52)
                 } else {
-                    Button { chatViewModel.sendMessage() } label: {
+                    Button {
+                        isFocused = false
+                        chatViewModel.sendMessage()
+                    } label: {
                         Image("sendButton").frame(width: 52, height: 52)
                     }
                     .disabled(!chatViewModel.canSend)

@@ -74,3 +74,6 @@ still missing. No model improvement has been measured on this set.
 `training_ready` stays false. The production compiler's 500/100/100 gate is
 unchanged. A separate pilot trainer, real-tokenizer check, interruption recovery
 test and raw base/adapter evaluation remain required before paid use.
+
+Note: `reviewed_seed_v1/` is the source-reviewed curriculum from PR #17. It is kept for
+reference and is not used by the current training set.
