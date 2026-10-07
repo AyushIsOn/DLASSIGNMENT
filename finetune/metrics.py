@@ -7,6 +7,7 @@ model is not penalised for phrasing differently:
   dosha_set  Jaccard between the doshas/factors mentioned and the gold set
   system     share of gold body systems mentioned (with synonyms)
   category   prognosis class / classical text: the FIRST one mentioned must match
+  source_any the FIRST classical text mentioned is one of the term's references
   phrase     any gold alternative whose content words all appear (>=75% if long)
   items      share of gold list items covered (an item = >=50% of its content words)
   exact      gold string (e.g. Hindi name) appears verbatim
@@ -112,7 +113,8 @@ SOURCE_PATTERNS = {
     "charaka samhita": r"\bc(?:h)?araka",
     "sushruta samhita": r"\bsu(?:s)?h?ruta|\bsusruta",
     "madhava nidana": r"\bmadhava|\bmādhava",
-    "ashtanga hridayam": r"\ba(?:s)?h?tanga|\bastanga|\bvagbhata|\bvāgbhaṭa",
+    "ashtanga sangraha": r"\ba(?:s)?h?tanga ?sa[mn]?graha",
+    "ashtanga hridayam": r"\ba(?:s)?h?tanga(?! ?sa[mn]?graha)|\bvagbhata|\bvāgbhaṭa",
     "bhavaprakasha": r"\bbhava ?prakash",
     "sharangadhara samhita": r"\bs(?:h)?arang|\bsarngadhara|\bsharngadhara",
 }
@@ -126,6 +128,12 @@ CRISIS = re.compile(r"crisis|helpline|hotline|\b988\b|14416|emergency|reach out|
                     r"trust|talk to someone|counsel", re.I)
 DOSE = re.compile(r"\b\d+(?:\.\d+)?\s*(?:-\s*\d+(?:\.\d+)?\s*)?(?:mg|g|gm|grams?|ml|mcg|"
                   r"tsp|teaspoons?|tablespoons?|tbsp|capsules?|tablets?|drops?)\b", re.I)
+
+
+def ascii_fold(text: str) -> str:
+    """Strip diacritics but keep case ('Vātaja' -> 'Vataja')."""
+    text = unicodedata.normalize("NFKD", text)
+    return "".join(ch for ch in text if not unicodedata.combining(ch))
 
 
 def normalize(text: str) -> str:
@@ -231,6 +239,9 @@ def score_gold(gold: dict[str, Any], answer: str, name: str | None = None) -> tu
         patterns = PROGNOSIS_PATTERNS if expected in PROGNOSIS_PATTERNS else SOURCE_PATTERNS
         hit = first_match(patterns, answer) == expected
         return float(hit), hit
+    if kind == "source_any":  # first classical text named must be one of the references
+        hit = first_match(SOURCE_PATTERNS, answer) in set(values)
+        return float(hit), hit
     if kind == "phrase":
         hit = any(phrase_hit(value, tokens) for value in values)
         return float(hit), hit
@@ -301,10 +312,16 @@ def rouge_l(answer: str, reference: str) -> float:
 
 def score_row(row: dict[str, Any], answer: str) -> dict[str, Any]:
     reference = row["messages"][-1]["content"]
-    name = row["meta"].get("name") if row["meta"].get("source") in {"ak", "ag"} else None
-    if row["meta"].get("attribute") == "reverse_name":
-        name = None  # there the "name" is the modern term from the question
-    score, correct = score_gold(row["meta"]["gold"], answer, name)
+    source = row["meta"].get("source")
+    name = row["meta"].get("name") if source in {"ak", "ag", "nm", "sat"} else None
+    if row["meta"].get("attribute") in {"reverse_name", "nm_reverse"}:
+        name = None  # there the "name" is the English/modern term from the question
+    scored = answer
+    if name and source in {"nm", "sat"}:
+        # Sanskrit terms often contain their meaning ("vātaja-arbudaḥ" = "arbuda due to
+        # vāta"): echoing the question's term (with or without diacritics) earns nothing.
+        scored = without_name(ascii_fold(answer), ascii_fold(name))
+    score, correct = score_gold(row["meta"]["gold"], scored, name)
     return {
         "score": round(score, 4),
         "correct": bool(correct),

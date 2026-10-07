@@ -3,8 +3,8 @@
 #
 #   bash scripts/lightning_gpu_run.sh
 #
-# preflight -> train (~1 h) -> evaluate base vs fine-tuned (~15 min) -> report -> merge
-# -> GGUF for the Mac (best effort). Runs in its own background session: closing the
+# preflight -> train (~1.5-2 h for 14B) -> evaluate base vs fine-tuned (~25 min) -> report
+# -> merge. (GGUF for the Mac is a separate CPU step afterwards: scripts/export_gguf.sh.) Runs in its own background session: closing the
 # browser or pressing Ctrl+C only stops the log view. Run the same command again to
 # re-attach, or - if the Studio was stopped - to resume: finished stages are skipped and
 # training continues from its last checkpoint.
@@ -38,7 +38,7 @@ started=$(date +%s)
 stage() { echo; echo "================ [$(date +%H:%M:%S)] $* ================"; }
 trap 'echo; echo "RUN FAILED at line $LINENO - see the error above. Fix it and re-run: bash scripts/lightning_gpu_run.sh"; rm -f "$PIDFILE"; echo PROGRESS_EXIT 1' ERR
 
-stage "0/6 environment"
+stage "0/5 environment"
 "$UV" sync --frozen --extra train --extra data --group dev
 nvidia-smi || true
 if ! run_py -c "from finetune.common import Config; from finetune.download_model import verified; import sys; c = Config.load(); sys.exit(0 if verified(c.model_dir, c) else 1)"; then
@@ -47,46 +47,47 @@ if ! run_py -c "from finetune.common import Config; from finetune.download_model
 fi
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # everything needed is on disk now
 
-stage "1/6 preflight (GPU, CUDA, bf16, disk, model, dataset)"
+RUN_DIR="$(run_py -c 'from finetune.common import Config; print(Config.load().output_dir)')"
+MODEL="$(run_py -c 'from finetune.common import Config; print(Config.load().raw["base_model"]["repository"])')"
+echo "config: ${ACHARYA_CONFIG:-configs/train.yaml} | model: $MODEL | run dir: $RUN_DIR"
+
+stage "1/5 preflight (GPU, CUDA, bf16, disk, model, dataset, time budget)"
 run_py -m finetune.preflight   # stops here with a clear message if anything is wrong
 
-stage "2/6 LoRA fine-tuning of Qwen3-8B (resumes automatically if interrupted)"
+stage "2/5 LoRA fine-tuning of $MODEL (resumes automatically if interrupted)"
+echo "Resume points every ~10 min; portable copy: $RUN_DIR/recovery/recovery-latest.tar"
 run_py -m finetune.train
 
-stage "3/6 evaluation: base vs fine-tuned on the held-out test set"
+stage "3/5 evaluation: base vs fine-tuned on the held-out test set (resumable)"
 run_py -m finetune.evaluate
 
-stage "4/6 report + charts"
+stage "4/5 report + charts"
 run_py -m finetune.report
 
-stage "5/6 merge LoRA into a standalone model"
+stage "5/5 merge LoRA into a standalone model + small download bundle"
 run_py -m finetune.export
-# Training is finished and the best adapter is saved: the optimizer checkpoints (~2 GB each)
-# are no longer needed and only cost disk space.
-rm -rf artifacts/run/checkpoints
-
-stage "6/6 GGUF for Ollama on a Mac (best effort, ~10 min on CPU cores)"
-unset HF_HUB_OFFLINE TRANSFORMERS_OFFLINE
-if bash scripts/export_gguf.sh; then
-  GGUF_NOTE="  gguf:     artifacts/gguf/                (download this folder to your Mac)"
-else
-  GGUF_NOTE="  gguf:     FAILED (training results are fine) - later, on CPU: bash scripts/export_gguf.sh"
-fi
+# Checkpoints are kept (they are the only way to continue training later); the small
+# bundle below is what to download if credits run out.
+tar -cf "$RUN_DIR/results-bundle.tar" -C "$RUN_DIR" adapter report eval training_summary.json \
+  metrics.jsonl RUN_INFO.json 2>/dev/null || true
+GGUF_NOTE="  gguf:     not built yet - switch to CPU, then: bash scripts/export_gguf.sh"
 
 minutes=$(( ($(date +%s) - started) / 60 ))
 cat <<EOF
 
 =====================================================================
 ALL DONE in ${minutes} min.
-  report:   artifacts/run/report/REPORT.md  (+ PNG charts)
-  adapter:  artifacts/run/adapter           (LoRA weights, ~700 MB)
-  merged:   artifacts/run/merged            (full fine-tuned model)
+  report:   $RUN_DIR/report/REPORT.md  (+ PNG charts)
+  adapter:  $RUN_DIR/adapter           (LoRA weights, ~1 GB)
+  merged:   $RUN_DIR/merged            (full fine-tuned model)
+  bundle:   $RUN_DIR/results-bundle.tar (adapter + report + eval: download this one)
 ${GGUF_NOTE}
 
 Optional - demo the iOS app against this GPU right now:
     bash scripts/lightning_serve.sh         -> prints an https URL for the app
 
 The H200 keeps billing until you stop the Studio or switch it back to CPU.
+Switch to CPU BEFORE exporting the GGUF (it needs no GPU).
 =====================================================================
 EOF
 rm -f "$PIDFILE"

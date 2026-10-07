@@ -21,7 +21,7 @@ def test_health_and_chat_with_retrieval():
     body = api.post("/v1/chat", json={"message": "What is the modern equivalent of Amlapitta?",
                                       "history": []}).json()
     assert body["outcome"] == "answered" and body["mode"] == "finetuned_rag"
-    assert body["citations"] and "Amlapitta" in body["citations"][0]["text"]
+    assert body["citations"] and any("amlapitta" in c["text"].casefold() for c in body["citations"])
     prompt = generator.prompts[-1]
     assert prompt.startswith(f"<|im_start|>system\n{SYSTEM_PROMPT}<|im_end|>")
     assert "Knowledge base entries:\n[1] " in prompt

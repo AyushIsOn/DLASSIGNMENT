@@ -6,9 +6,11 @@ the model sees the same kind of retrieved entries in training and production.
 
 from __future__ import annotations
 
+import heapq
 import json
 import math
 import re
+import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -28,19 +30,28 @@ STOPWORDS = frozenset(
         "what when where which while who whom why will with would you your yours ayurveda "
         "ayurvedic tell explain describe described give name list called call known mean "
         "means please according main mainly involved involve predominant predominance "
-        "affect affected doctor"
+        "affect affected doctor hi hey hello thanks thank ok okay"
     ).split()
 )
 TITLE_WEIGHT = 2.0  # a match on the card's title (the condition name) counts double
 
 
+def fold(text: str) -> str:
+    """Lowercase and strip diacritics, so 'vātavyādhiḥ' and 'vatavyadhih' are one token."""
+    text = unicodedata.normalize("NFKD", text)
+    return "".join(ch for ch in text if not unicodedata.combining(ch)).casefold()
+
+
 def tokenize(text: str) -> list[str]:
     tokens = []
-    for token in _TOKEN.findall(text.casefold()):
+    for token in _TOKEN.findall(fold(text)):
         if token in STOPWORDS:
             continue
         if len(token) > 4 and token.endswith("s") and not token.endswith("ss"):
             token = token[:-1]
+        elif len(token) > 3 and token[-1] == "h" and token[-2] in "aiu" \
+                and token[-3] not in "aeiou":
+            token = token[:-1]  # Sanskrit visarga, usually not typed: "jvarah" == "jvara"
         tokens.append(token)
     return tokens
 
@@ -115,15 +126,16 @@ class BM25:
         self, query: str, k: int = 3, exclude: Iterable[str] = (), min_score: float = 0.0
     ) -> list[Hit]:
         banned = set(exclude)
-        ranked = sorted(self.scores(query).items(), key=lambda item: (-item[1], item[0]))
+        # heap instead of a full sort: same order (score desc, then index), O(n + k log n)
+        heap = [(-score, index) for index, score in self.scores(query).items()
+                if score >= min_score]
+        heapq.heapify(heap)
         hits = []
-        for index, score in ranked:
+        while heap and len(hits) < k:
+            negative, index = heapq.heappop(heap)
             card = self.cards[index]
-            if card.id in banned or score < min_score:
-                continue
-            hits.append(Hit(card, score))
-            if len(hits) == k:
-                break
+            if card.id not in banned:
+                hits.append(Hit(card, -negative))
         return hits
 
     @classmethod

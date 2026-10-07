@@ -1,65 +1,78 @@
-# AcharyaGPT fine-tuning dataset
+# AcharyaGPT fine-tuning dataset (round 2)
 
-Built by `python -m finetune.build_dataset` (CPU, deterministic, ~5 s) and committed in
-`data/sft/` with SHA-256 hashes in `data/sft/MANIFEST.json`. Numbers below come from
-`data/sft/stats.json`.
+Built by `python -m finetune.build_dataset` (CPU, deterministic, ~30 s) and committed in
+`data/sft/*.jsonl.gz` with SHA-256 hashes (of the decompressed content) in
+`data/sft/MANIFEST.json`. The same build writes the SQLite database
+`data/db/acharya.sqlite` (not committed, 87 MB). Numbers below come from `data/sft/stats.json`.
 
 ## Sources
 
-| Source | Used for | Rows used |
+| Source | Used for | Entities |
 |---|---|---:|
-| [Ayurvedic Knowledge Dataset](https://www.kaggle.com/datasets/akashkumarpr/ayurvedic-knowledge-dataset) (Akash Kumar, v1, CC BY 4.0) | conditions: modern equivalent, dosha, body system, prognosis, symptoms, treatment principles, classical text | 974 unique names (26 duplicate names dropped) |
-| [AyurGenixAI](https://www.kaggle.com/datasets/kagglekirti123/ayurgenixai-ayurvedic-dataset) (kagglekirti123, v1, CC BY 4.0) | diseases: doshas, prakriti, symptoms, herbs, yoga, diet/lifestyle, Hindi/Marathi names | 363 unique diseases (most complete row kept per disease) |
-| `data/dataset V1.0.pdf` (original AcharyaGPT) | 20 Q&A pairs, cleaned transcription in `data/curated/pdf_qa.yaml` | train only |
-| `data/curated/concepts.yaml` (written for this project) | 59 general concepts (doshas, dhatus, agni, panchakarma, classical texts...) with 5 phrasings each | |
-| `data/curated/safety.yaml` (written for this project) | dose requests, emergencies, self-harm, stopping medication, "diagnose me" | |
+| [NAMASTE National Ayurveda Morbidity Codes](https://namaste.ayush.gov.in/ayurveda) (Ministry of Ayush, Govt. of India) | diagnostic terms: English name, NAMASTE code (+ ICD-11 TM2 code), clinical features, parent category, classical references | 2,483 terms (rows without an IAST spelling dropped, 18 duplicate IDs merged) |
+| [NAMASTE Standardised Ayurveda Terminology (SAT)](https://namaste.ayush.gov.in/sat_Ayurveda) | fundamentals, body, signs & symptoms, substances, pharmacy, diet, treatment, prevention: meaning, definition, category | 12,070 terms (its diagnostic section duplicates the morbidity codes and only adds their references) |
+| [Ayurvedic Knowledge Dataset](https://www.kaggle.com/datasets/akashkumarpr/ayurvedic-knowledge-dataset) (Akash Kumar, v1, CC BY 4.0) | conditions: modern equivalent, dosha, body system, prognosis, symptoms, treatment principles, classical text | 974 |
+| [AyurGenixAI](https://www.kaggle.com/datasets/kagglekirti123/ayurgenixai-ayurvedic-dataset) (kagglekirti123, v1, CC BY 4.0) | doshas, prakriti, symptoms, herbs, yoga, diet/lifestyle, Hindi/Marathi names | 363 |
+| `data/dataset V1.0.pdf` (original AcharyaGPT) | 20 Q&A pairs (`data/curated/pdf_qa.yaml`) | train only |
+| `data/curated/concepts.yaml`, `data/curated/safety.yaml` (this project) | 59 general concepts; dose / emergency / self-harm / diagnosis requests | |
 
-Both Kaggle files are downloaded anonymously with `kagglehub` and must match pinned
-SHA-256 hashes. Formulation doses from AyurGenixAI are never used. The 10,000-row
-"Ayurveda Healthcare" Kaggle table is not used (repeated synthetic variants with
-mismatched symptom profiles), and neither are the Sushruta Samhita OCR scans.
+The two NAMASTE Excel files are committed in `data/raw/namaste/` (downloaded 2026-10-07,
+SHA-256 pinned). The Kaggle files are downloaded with `kagglehub` and hash-checked.
+
+Checked and **not used**: the Hugging Face sets `Tweaks/Ayurvedic_QA` (82k rows generated
+from one book, mostly "Q1: who is the author…"), `jaychedaa/Ayurveda-LLM-dataset`
+(LLM-written, no licence), `AmareshHebbar/ayurveda-icd-sft` (ICD-10-CM codes, not
+Ayurveda); Kaggle "Ayurveda Healthcare" (synthetic variants); Sushruta Samhita OCR.
 
 ## Format
 
-Each JSONL row is a chat example: `messages` = optional history, the user turn (the
-question, or retrieved knowledge-base entries + the question) and the assistant answer.
-The system prompt is added at train/eval/serve time from `acharya/prompting.py`.
+Each row: `messages` = optional history, the user turn (question, or retrieved entries +
+question) and the assistant answer, plus `meta` (source, entity, attribute, split group,
+gold label). The system prompt is added at train/eval/serve time from
+`acharya/prompting.py`. Example:
 
-Answers are short natural sentences written from the table fields, e.g.
+> **Q:** What does vatakapholbana-hinapittasannipatah mean?
+> **A:** Vātakaphōlbaṇa-hīnapittasannipātaḥ (वातकफोल्बण-हीनपित्तसन्निपातः) is the Ayurvedic
+> diagnostic term for sannipāta vikāra due to aggravated vāta-kapha and depleted pitta.
 
-> **Q:** Which modern disease is Kandu Jwara equivalent to?
-> **A:** Kandu Jwara corresponds to Fever with itching in modern medicine.
+## Splits (how the test measures generalization, not memorization)
 
-The previous version of this project trained on answers that were a verbatim copy of the
-passage in the prompt (95% five-word overlap), so the model only learned to copy. Here
-86% of training rows are closed book (no passage at all) and only 0.2% of answers appear
-verbatim in their prompt (the 57 concept cards whose text is the answer; a test keeps
-this under 1%).
-
-## Splits (how the test avoids leakage)
-
-Each attribute has 7 question phrasings: phrasings 0-3 are used for training (3 per
-fact), 4 for validation and 5-6 for testing. Conditions are hashed into groups:
+Every attribute has 7 question phrasings: 0-3 train (3 per fact for the Kaggle tables,
+2 for NAMASTE), 4 validation, 5-6 test; phrasing 6 for NAMASTE uses the diacritic-free
+spelling people type. Entities are hashed into groups. NAMASTE terms are grouped by
+spelling-insensitive name, so a term listed twice can never be both trained and "unseen".
 
 | Group | Share | Training | Testing |
 |---|---:|---|---|
-| seen | 84% | closed book (3 phrasings) + 35% open book copies | `seen_closed`: unseen phrasing, no retrieval |
+| seen | 84% | closed book + 25-35% open-book copies | `seen_closed`: unseen wording, no retrieval |
 | rag_only | 8% | open book only | – |
-| held out | 8% | **never** | `heldout_open`: with retrieved entries; `heldout_closed`: control |
+| held out | 8% | **never** | `heldout_open`: with retrieved entries; `unseen_closed`: infer a term's meaning without retrieval; `heldout_closed`: control |
+
+Leakage guards (the build fails if any is violated):
+- no validation/test question appears in training;
+- no held-out entity or held-out card appears in training rows or contexts;
+- no spelling twin of an unseen term is trained;
+- a seen term's category answer is dropped if its parent term is held out.
+
+Closed-book unseen questions whose term appears **anywhere** in training (for example
+glossed inside another definition) are removed: 149 test rows. Echoing the question's term
+earns no credit in scoring.
 
 | Split | Rows | Open-book rows |
 |---|---:|---:|
-| train | 34,274 | 4,958 |
-| validation | 1,178 | 405 |
-| test | 1,918 | 469 |
+| train | 88,214 | 12,327 |
+| validation | 1,182 | 525 |
+| test | 2,242 | 720 |
 
-Token counts with the Qwen3 tokenizer (checked by `finetune.check_data`): train 5.41M
-tokens per epoch, of which 1.03M are supervised answer tokens; longest example 812 tokens
-(no truncation at `max_seq_len=1024`). BM25 retrieval finds the right entry in the top 3
-for 100% of held-out test questions and 96% of seen-condition test questions.
+Test groups: seen_closed 1,000 · heldout_open 720 · unseen_closed 300 ·
+heldout_closed 138 · concepts 59 · safety 25.
+
+Train tokens (Qwen3 tokenizer, `finetune.check_data`): 14.4M per epoch, of which 3.4M are
+supervised answer tokens. The longest example is 1,316 tokens, so `max_seq_len=1536`
+truncates nothing. BM25 finds the right entry in the top 3 for 98% of held-out questions.
 
 ## Limitations
 
-The Kaggle tables are community-made and have not been verified by clinicians; some
-"modern equivalents" are descriptive rather than exact diagnoses. The model learns these
-tables as they are. Outputs are educational, not medical advice.
+The Kaggle tables are community-made and not clinically verified. NAMASTE is an official
+terminology, but its English glosses are terse and contain a few spelling errors from the
+source. Outputs are educational, not medical advice.

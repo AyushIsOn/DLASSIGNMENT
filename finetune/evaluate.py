@@ -31,17 +31,21 @@ from finetune.common import (
     stop_token_ids,
     write_json,
 )
-from finetune.data import Collator, SFTDataset, prompt_text, read_jsonl, verify_manifest
+from finetune.data import Collator, SFTDataset, prompt_text, read_split, verify_manifest
 from finetune.metrics import score_row
 
 MODELS = ("base", "finetuned")
 GROUP_LABELS = {
     "seen_closed": "Knowledge recall (no retrieval, new question wording)",
-    "heldout_open": "Unseen conditions + retrieved KB entries (RAG)",
+    "heldout_open": "Unseen conditions/terms + retrieved KB entries (RAG)",
+    "unseen_closed": "Unseen Sanskrit terms, no retrieval (infer the meaning: generalization)",
     "heldout_closed": "Unseen conditions, no retrieval (control: unknowable)",
     "concepts": "General Ayurveda concepts (new wording)",
     "safety": "Safety (doses, emergencies, diagnosis requests)",
 }
+# Headline "generalization" = questions about things never trained on, so they cannot be
+# answered from memorised training rows: reading unseen KB entries + inferring unseen terms.
+GENERALIZATION_GROUPS = ("heldout_open", "unseen_closed")
 
 
 def load_model(config: Config, adapter: Path) -> tuple[Any, Any]:
@@ -83,7 +87,7 @@ def answer_loss(model: Any, tokenizer: Any, rows: list[dict[str, Any]], max_len:
     import torch
 
     tokenizer.padding_side = "right"
-    dataset = SFTDataset(rows, tokenizer, max_len)
+    dataset = SFTDataset(rows, tokenizer, max_len, sort_by_length=True)
     tokenizer.padding_side = "left"
     collate = Collator(tokenizer.pad_token_id)
     total_loss, total_tokens = 0.0, 0
@@ -132,8 +136,15 @@ def summarize(rows: list[dict[str, Any]], answers: dict[tuple[str, str], dict[st
     attributes = {a: {m: stats(subset, m) for m in MODELS}
                   for a, subset in sorted(by_attribute.items())}
     knowledge = [row for row in rows if row["meta"]["group"] != "heldout_closed"]
+    unseen = [row for row in rows if row["meta"]["group"] in GENERALIZATION_GROUPS]
+    by_source: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_source[f"{row['meta']['group']}:{row['meta']['source']}"].append(row)
     return {"overall_excluding_control": {m: stats(knowledge, m) for m in MODELS},
-            "groups": groups, "attributes": attributes}
+            "generalization": {m: stats(unseen, m) for m in MODELS},
+            "groups": groups, "attributes": attributes,
+            "group_by_source": {k: {m: stats(v, m) for m in MODELS}
+                                for k, v in sorted(by_source.items())}}
 
 
 def evaluate(config: Config, adapter: Path, limit: int | None, smoke: bool) -> dict[str, Any]:
@@ -146,7 +157,7 @@ def evaluate(config: Config, adapter: Path, limit: int | None, smoke: bool) -> d
     verify_manifest(config.data_dir)
     out = config.eval_dir
     out.mkdir(parents=True, exist_ok=True)
-    rows = read_jsonl(config.data_dir / "test.jsonl")
+    rows = read_split(config.data_dir, "test")
     if limit:
         # stratified: keep every group represented
         per_group: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -216,8 +227,11 @@ def evaluate(config: Config, adapter: Path, limit: int | None, smoke: bool) -> d
     }
     write_json(out / "results.json", results)
     overall = summary["overall_excluding_control"]
+    general = summary["generalization"]
     log("evaluation_done", base_accuracy=overall["base"].get("accuracy"),
         finetuned_accuracy=overall["finetuned"].get("accuracy"),
+        base_generalization=general["base"].get("accuracy"),
+        finetuned_generalization=general["finetuned"].get("accuracy"),
         base_loss=losses["base"]["loss"], finetuned_loss=losses["finetuned"]["loss"])
     return results
 

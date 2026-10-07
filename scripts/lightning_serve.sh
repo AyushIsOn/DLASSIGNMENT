@@ -21,8 +21,8 @@ if [[ ! -x "$CF" ]]; then
   chmod +x "$CF"
 fi
 
-MODEL_DIR="${ACHARYA_BASE_MODEL_DIR:-$ROOT/artifacts/models/Qwen3-8B}"
-ADAPTER="${ACHARYA_ADAPTER_DIR:-$ROOT/artifacts/run/adapter}"
+MODEL_DIR="$(run_py -c 'from finetune.common import Config; print(Config.load().model_dir)')"
+ADAPTER="${ACHARYA_ADAPTER_DIR:-$(run_py -c 'from finetune.common import Config; print(Config.load().adapter_dir)')}"
 [[ -f "$ADAPTER/adapter_config.json" ]] || {
   echo "No trained adapter in $ADAPTER - run scripts/lightning_gpu_run.sh first"; exit 1; }
 

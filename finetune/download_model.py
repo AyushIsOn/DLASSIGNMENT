@@ -1,9 +1,9 @@
-"""Download the pinned Qwen3-8B snapshot and verify every weight shard (CPU only).
+"""Download the pinned base model snapshot (configs/train.yaml) and verify every shard (CPU only).
 
-    python -m finetune.download_model         # ~16.4 GB, resumable
+    python -m finetune.download_model         # Qwen3-14B: 29.5 GB, resumable
 
 A `.verified.json` marker is written after all SHA-256 hashes match, so later
-steps (including the GPU run) do not need to re-hash 16 GB.
+steps (including the GPU run) do not need to re-hash the weights.
 """
 
 from __future__ import annotations

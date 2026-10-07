@@ -1,10 +1,10 @@
-import json
 from pathlib import Path
 
 import pytest
 
 from finetune import metrics as M
 from finetune import templates as T
+from finetune.data import read_split
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -115,8 +115,7 @@ def test_every_reference_answer_scores_as_correct():
     """The gold reference itself must always be judged correct (metric sanity)."""
     failures = []
     for split in ("validation", "test"):
-        for line in (ROOT / f"data/sft/{split}.jsonl").read_text().splitlines():
-            row = json.loads(line)
+        for row in read_split(ROOT / "data/sft", split):
             result = M.score_row(row, row["messages"][-1]["content"])
             if not result["correct"]:
                 failures.append((row["id"], row["messages"][-1]["content"][:120]))

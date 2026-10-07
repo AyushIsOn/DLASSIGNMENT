@@ -1,95 +1,154 @@
 {
   "by_attribute_test": {
     "concepts:concept": 59,
-    "heldout_closed:body_system": 25,
-    "heldout_closed:diet_lifestyle": 7,
-    "heldout_closed:dosha": 23,
-    "heldout_closed:doshas": 10,
-    "heldout_closed:herbs": 5,
-    "heldout_closed:hindi_name": 6,
-    "heldout_closed:modern_equivalent": 23,
-    "heldout_closed:overview": 29,
-    "heldout_closed:prakriti": 8,
-    "heldout_closed:prognosis": 23,
-    "heldout_closed:source_text": 26,
-    "heldout_closed:symptoms": 33,
-    "heldout_closed:treatment": 22,
-    "heldout_closed:yoga": 6,
-    "heldout_open:body_system": 44,
-    "heldout_open:diet_lifestyle": 16,
-    "heldout_open:dosha": 44,
-    "heldout_open:doshas": 16,
-    "heldout_open:herbs": 9,
-    "heldout_open:hindi_name": 16,
-    "heldout_open:modern_equivalent": 44,
-    "heldout_open:overview": 60,
-    "heldout_open:prakriti": 16,
-    "heldout_open:prognosis": 44,
-    "heldout_open:source_text": 44,
-    "heldout_open:symptoms": 60,
-    "heldout_open:treatment": 44,
-    "heldout_open:yoga": 12,
+    "heldout_closed:body_system": 12,
+    "heldout_closed:diet_lifestyle": 6,
+    "heldout_closed:dosha": 13,
+    "heldout_closed:doshas": 7,
+    "heldout_closed:herbs": 2,
+    "heldout_closed:hindi_name": 5,
+    "heldout_closed:modern_equivalent": 15,
+    "heldout_closed:overview": 20,
+    "heldout_closed:prakriti": 4,
+    "heldout_closed:prognosis": 10,
+    "heldout_closed:source_text": 16,
+    "heldout_closed:symptoms": 13,
+    "heldout_closed:treatment": 11,
+    "heldout_closed:yoga": 4,
+    "heldout_open:body_system": 30,
+    "heldout_open:diet_lifestyle": 15,
+    "heldout_open:dosha": 28,
+    "heldout_open:doshas": 15,
+    "heldout_open:herbs": 7,
+    "heldout_open:hindi_name": 14,
+    "heldout_open:modern_equivalent": 25,
+    "heldout_open:nm_category": 41,
+    "heldout_open:nm_code": 42,
+    "heldout_open:nm_english": 48,
+    "heldout_open:nm_features": 28,
+    "heldout_open:overview": 38,
+    "heldout_open:prakriti": 14,
+    "heldout_open:prognosis": 26,
+    "heldout_open:reference": 41,
+    "heldout_open:sat_category": 33,
+    "heldout_open:sat_meaning": 167,
+    "heldout_open:source_text": 29,
+    "heldout_open:symptoms": 45,
+    "heldout_open:treatment": 24,
+    "heldout_open:yoga": 10,
     "safety:safety_diagnosis": 15,
     "safety:safety_dose": 3,
     "safety:safety_emergency": 3,
     "safety:safety_medication": 2,
     "safety:safety_self_harm": 2,
-    "seen_closed:body_system": 103,
-    "seen_closed:diet_lifestyle": 46,
-    "seen_closed:dosha": 95,
-    "seen_closed:doshas": 28,
-    "seen_closed:herbs": 9,
-    "seen_closed:hindi_name": 40,
-    "seen_closed:modern_equivalent": 101,
-    "seen_closed:overview": 131,
-    "seen_closed:prakriti": 37,
-    "seen_closed:prognosis": 108,
-    "seen_closed:reverse_name": 84,
-    "seen_closed:source_text": 98,
-    "seen_closed:symptoms": 123,
-    "seen_closed:treatment": 106,
-    "seen_closed:yoga": 10
+    "seen_closed:body_system": 39,
+    "seen_closed:diet_lifestyle": 36,
+    "seen_closed:dosha": 35,
+    "seen_closed:doshas": 20,
+    "seen_closed:herbs": 6,
+    "seen_closed:hindi_name": 26,
+    "seen_closed:modern_equivalent": 34,
+    "seen_closed:nm_category": 47,
+    "seen_closed:nm_code": 52,
+    "seen_closed:nm_english": 45,
+    "seen_closed:nm_features": 27,
+    "seen_closed:nm_reverse": 46,
+    "seen_closed:overview": 63,
+    "seen_closed:prakriti": 31,
+    "seen_closed:prognosis": 42,
+    "seen_closed:reference": 33,
+    "seen_closed:reverse_name": 31,
+    "seen_closed:sat_category": 37,
+    "seen_closed:sat_meaning": 213,
+    "seen_closed:source_text": 40,
+    "seen_closed:symptoms": 56,
+    "seen_closed:treatment": 36,
+    "seen_closed:yoga": 5,
+    "unseen_closed:nm_english": 92,
+    "unseen_closed:sat_meaning": 208
   },
   "by_group": {
     "test": {
       "concepts": 59,
-      "heldout_closed": 246,
-      "heldout_open": 469,
+      "heldout_closed": 138,
+      "heldout_open": 720,
       "safety": 25,
-      "seen_closed": 1119
+      "seen_closed": 1000,
+      "unseen_closed": 300
     },
     "train": {
       "concepts": 236,
-      "rag_only": 1426,
+      "rag_only": 3449,
       "safety": 198,
-      "seen": 32414
+      "seen": 84331
     },
     "validation": {
       "concepts": 59,
-      "heldout_open": 405,
-      "seen_closed": 714
+      "heldout_open": 525,
+      "seen_closed": 510,
+      "unseen_closed": 88
     }
   },
-  "cards": 1414,
+  "by_source": {
+    "test": {
+      "ag": 307,
+      "ak": 651,
+      "concept": 59,
+      "nm": 542,
+      "safety": 25,
+      "sat": 658
+    },
+    "train": {
+      "ag": 7744,
+      "ak": 26076,
+      "concept": 236,
+      "nm": 25126,
+      "pdf": 20,
+      "safety": 198,
+      "sat": 28814
+    },
+    "validation": {
+      "ag": 159,
+      "ak": 516,
+      "concept": 59,
+      "nm": 231,
+      "sat": 217
+    }
+  },
+  "cards": 15967,
   "entities": {
     "ayurgenixai": 363,
     "ayurvedic_knowledge": 974,
     "groups": {
-      "heldout_test": 60,
-      "heldout_val": 52,
-      "rag_only": 92,
-      "seen": 1133
+      "heldout_test": 623,
+      "heldout_val": 611,
+      "rag_only": 1261,
+      "seen": 13395
+    },
+    "namaste_morbidity": 2483,
+    "namaste_sat": 12070
+  },
+  "evaluation_filters": {
+    "test": {
+      "dropped_by_caps": 3891,
+      "dropped_closed_book_term_mentioned_in_training": 149,
+      "dropped_unscorable": 0
+    },
+    "validation": {
+      "dropped_by_caps": 3183,
+      "dropped_closed_book_term_mentioned_in_training": 31,
+      "dropped_unscorable": 1
     }
   },
-  "heldout_bm25_recall_at_3": 1.0,
+  "heldout_bm25_recall_at_3": 0.9806,
   "open_book": {
-    "test": 469,
-    "train": 4958,
-    "validation": 405
+    "test": 720,
+    "train": 12327,
+    "validation": 525
   },
   "rows": {
-    "test": 1918,
-    "train": 34274,
-    "validation": 1178
+    "test": 2242,
+    "train": 88214,
+    "validation": 1182
   }
 }

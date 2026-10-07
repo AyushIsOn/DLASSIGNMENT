@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import hashlib
 import json
 import random
@@ -36,8 +37,10 @@ from typing import Any
 import yaml
 
 from acharya.prompting import SYSTEM_PROMPT, user_content
-from acharya.retrieval import BM25, Card
+from acharya.retrieval import BM25, Card, fold
+from finetune import namaste as N
 from finetune import templates as T
+from finetune.data import sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED = 3407
@@ -58,6 +61,16 @@ SOURCES = {
         "citation": "AyurGenixAI Dataset (kagglekirti123, Kaggle, CC BY 4.0)",
     },
 }
+NAMASTE_SOURCES = {  # committed under data/raw/namaste/ (downloaded 2026-10-07)
+    "nm": {"file": N.MORBIDITY_FILE, "rows": 2910,
+           "sha256": "544002e8c71406961f672d268b67111851ec772bb108ee37b346c7bf2393f380",
+           "url": "https://namaste.ayush.gov.in/ayurveda (Download Excel)"},
+    "sat": {"file": N.SAT_FILE, "rows": 14968,
+            "sha256": "5c4c0228415da2806eefbf9b7f1b95a9432a5ff436b9dcc24682299cf0044cbe",
+            "url": "https://namaste.ayush.gov.in/admin/assets/excel/namaste/"
+                   "ayu_sat_table_combined.xlsx"},
+}
+RAW_DIR = ROOT / "data" / "raw" / "namaste"
 PDF_SHA256 = "ae5a30200145559dbd0b7ce25b58e6f1a31c272b98743d8a72353a0ddfbc5322"
 PDF_CITATION = "Original AcharyaGPT dataset V1.0 (PDF)"
 CONCEPT_CITATION = "AcharyaGPT curated Ayurveda concepts"
@@ -70,6 +83,26 @@ VAL_SHARE = 0.08  # seen facts asked with the validation phrasing
 TEST_SHARE = 0.12  # seen facts asked with a test phrasing
 NONE_VALUES = {"", "none", "none specific", "nan", "n/a", "na", "-"}
 CONVERSATIONAL = {"greeting", "about-acharyagpt"}  # trained, but not retrievable KB cards
+# NAMASTE terms: 2 of the 4 training phrasings per fact (there are ~25k facts), a smaller
+# open-book share, and capped evaluation sets so a 14B evaluation stays ~25 minutes.
+NAMASTE_TRAIN_PHRASINGS = 2
+NAMASTE_OPEN_BOOK_SHARE = 0.25
+# Unseen terms asked WITHOUT retrieval: only the meaning can be inferred (from Sanskrit word
+# parts learned on other terms); codes, categories and references are unknowable.
+INFERABLE = {"nm_english", "sat_meaning"}
+# (split, group, source) -> maximum rows; anything else is uncapped.
+CAPS = {
+    ("validation", "seen_closed", "ak"): 180, ("validation", "seen_closed", "ag"): 90,
+    ("validation", "seen_closed", "nm"): 120, ("validation", "seen_closed", "sat"): 120,
+    ("validation", "heldout_open", "nm"): 60, ("validation", "heldout_open", "sat"): 60,
+    ("validation", "unseen_closed", "nm"): 60, ("validation", "unseen_closed", "sat"): 60,
+    ("test", "seen_closed", "ak"): 330, ("test", "seen_closed", "ag"): 170,
+    ("test", "seen_closed", "nm"): 250, ("test", "seen_closed", "sat"): 250,
+    ("test", "heldout_open", "ak"): 220, ("test", "heldout_open", "ag"): 100,
+    ("test", "heldout_open", "nm"): 200, ("test", "heldout_open", "sat"): 200,
+    ("test", "heldout_closed", "ak"): 120, ("test", "heldout_closed", "ag"): 60,
+    ("test", "unseen_closed", "nm"): 250, ("test", "unseen_closed", "sat"): 300,
+}
 
 
 # ------------------------------------------------------------------ utilities
@@ -98,12 +131,6 @@ def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
 
 
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def download(key: str, kaggle_dir: Path | None) -> Path:
@@ -318,6 +345,150 @@ def ag_facts(entity: dict[str, str]) -> list[tuple[str, str, dict[str, Any]]]:
     return facts
 
 
+# ------------------------------------------------------------------ NAMASTE
+
+
+def load_namaste() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    for spec in NAMASTE_SOURCES.values():
+        path = RAW_DIR / spec["file"]
+        if sha256_file(path) != spec["sha256"]:
+            raise RuntimeError(f"{path} hash mismatch (expected the committed NAMASTE file)")
+    sat_rows = N.read_sat(RAW_DIR / N.SAT_FILE)
+    nm = N.load_morbidity(RAW_DIR / N.MORBIDITY_FILE, sat_rows, NAMASTE_SOURCES["nm"]["rows"])
+    sat = N.load_sat(sat_rows, NAMASTE_SOURCES["sat"]["rows"])
+    return nm, sat
+
+
+def entity_group(key: str) -> str:
+    value = bucket(key)
+    if value in HELDOUT_BUCKETS:
+        return "heldout_val" if stable_int("half", key) % 2 else "heldout_test"
+    return "rag_only" if value in RAG_ONLY_BUCKETS else "seen"
+
+
+def namaste_groups(entities: list[dict[str, Any]]) -> dict[str, str]:
+    """Split by spelling-insensitive name, so a term listed twice (or in both files) can
+    never be seen in training and also tested as 'unseen'."""
+    return {entity["id"]: entity_group("namaste:" + N.group_key(entity["name"]))
+            for entity in entities}
+
+
+def add_namaste(builder: Builder, entities: list[dict[str, Any]], groups: dict[str, str],
+                by_id: dict[str, dict[str, Any]]) -> None:
+    for entity in entities:
+        eid, kind, name = entity["id"], entity["kind"], entity["name"]
+        group = groups[eid]
+        parent = entity["parent"]
+        # a seen child's category answer names its parent and the parent's meaning, so a
+        # held-out parent would leak: such category facts are dropped
+        allow_parent = bool(parent) and not groups.get(parent, "seen").startswith("heldout")
+        facts = (N.nm_facts if kind == "nm" else N.sat_facts)(entity, by_id, allow_parent)
+        templates = N.NM_TEMPLATES if kind == "nm" else N.SAT_TEMPLATES
+        for attribute, answer, gold in facts:
+            phrasings = templates[attribute]
+            meta = {"source": kind, "entity": eid, "name": name, "attribute": attribute,
+                    "gold": gold, "group": group}
+            key = f"{eid}|{attribute}"
+
+            def q(slot: int, phrasings: tuple[str, ...] = phrasings, name: str = name) -> str:
+                shown = N.ascii_name(name) if slot == N.ASCII_SLOT else name
+                return phrasings[slot].format(name=shown)
+
+            if group == "seen":
+                slots = sorted(T.TRAIN_SLOTS, key=lambda s: stable_int("nm-slot", key, s))
+                for slot in slots[:NAMASTE_TRAIN_PHRASINGS]:
+                    builder.add("train", f"{key}|{slot}", q(slot), answer, {**meta, "slot": slot})
+                if chance(NAMASTE_OPEN_BOOK_SHARE, "open", key):
+                    slot = slots[0]
+                    ctx, ids = builder.contexts(q(slot), eid, training=True, salt=key)
+                    builder.add("train", f"{key}|{slot}|open", q(slot), answer,
+                                {**meta, "slot": slot}, ctx, ids)
+                if chance(VAL_SHARE, "val", key):
+                    builder.add("validation", f"{key}|{T.VAL_SLOT}", q(T.VAL_SLOT), answer,
+                                {**meta, "slot": T.VAL_SLOT, "group": "seen_closed"})
+                if chance(TEST_SHARE, "test", key):
+                    slot = T.TEST_SLOTS[stable_int("test-slot", key) % 2]
+                    builder.add("test", f"{key}|{slot}", q(slot), answer,
+                                {**meta, "slot": slot, "group": "seen_closed"})
+            elif group == "rag_only":
+                slot = min(T.TRAIN_SLOTS, key=lambda s: stable_int("rag", key, s))
+                ctx, ids = builder.contexts(q(slot), eid, training=True, salt=f"{key}{slot}")
+                builder.add("train", f"{key}|{slot}|open", q(slot), answer,
+                            {**meta, "slot": slot}, ctx, ids)
+            else:
+                split = "validation" if group == "heldout_val" else "test"
+                slot = T.VAL_SLOT if split == "validation" else T.TEST_SLOTS[
+                    stable_int("test-slot", key) % 2]
+                ctx, ids = builder.contexts(q(slot), eid, training=False, salt=key)
+                builder.add(split, f"{key}|{slot}|open", q(slot), answer,
+                            {**meta, "slot": slot, "group": "heldout_open"}, ctx, ids)
+                if attribute in INFERABLE:
+                    builder.add(split, f"{key}|{slot}|closed", q(slot), answer,
+                                {**meta, "slot": slot, "group": "unseen_closed"})
+
+    # English name -> NAMASTE term (the reverse direction), seen terms only
+    seen_nm = [e for e in entities if e["kind"] == "nm" and groups[e["id"]] == "seen"]
+    phrasings = N.NM_TEMPLATES["nm_reverse"]
+    for first_id, english, answer, gold in N.reverse_facts(seen_nm):
+        key = f"nmrev-{english_slug(english)}"
+        meta = {"source": "nm", "entity": first_id, "name": english, "attribute": "nm_reverse",
+                "gold": gold, "group": "seen"}
+        slots = sorted(T.TRAIN_SLOTS, key=lambda s: stable_int("nm-slot", key, s))
+        for slot in slots[:NAMASTE_TRAIN_PHRASINGS]:
+            builder.add("train", f"{key}|{slot}", phrasings[slot].format(name=english), answer,
+                        {**meta, "slot": slot})
+        if chance(TEST_SHARE, "test", key):
+            slot = T.TEST_SLOTS[stable_int("test-slot", key) % 2]
+            builder.add("test", f"{key}|{slot}", phrasings[slot].format(name=english), answer,
+                        {**meta, "slot": slot, "group": "seen_closed"})
+
+    # two-turn conversations about seen terms ("What does X mean?" -> "Which text describes it?")
+    rng = random.Random(f"{SEED}-namaste")
+    seen = [e for e in entities if groups[e["id"]] == "seen"]
+    for entity in rng.sample(seen, k=min(400, len(seen))):
+        allow_parent = not groups.get(entity["parent"] or "", "seen").startswith("heldout")
+        facts = {a: (ans, gold) for a, ans, gold in
+                 (N.nm_facts if entity["kind"] == "nm" else N.sat_facts)(
+                     entity, by_id, allow_parent)}
+        options = [a for a in facts if a in N.FOLLOW_UPS]
+        if len(options) < 2:
+            continue
+        first, second = rng.sample(options, k=2)
+        templates = N.NM_TEMPLATES if entity["kind"] == "nm" else N.SAT_TEMPLATES
+        history = [
+            {"role": "user", "content": templates[first][rng.choice(T.TRAIN_SLOTS)].format(
+                name=entity["name"])},
+            {"role": "assistant", "content": facts[first][0]},
+        ]
+        follow = rng.choice(N.FOLLOW_UPS[second])
+        meta = {"source": entity["kind"], "entity": entity["id"], "name": entity["name"],
+                "attribute": second, "gold": facts[second][1], "group": "seen",
+                "multi_turn": True}
+        builder.add("train", f"{entity['id']}|{first}>{second}", follow, facts[second][0], meta,
+                    history=history)
+
+
+def english_slug(text: str) -> str:
+    """Stable, unique id part for an English name."""
+    return slug(N.ascii_name(text))[:80] + f"-{stable_int('slug', text) % 10_000:04d}"
+
+
+def apply_caps(rows: list[dict[str, Any]], split: str) -> tuple[list[dict[str, Any]], int]:
+    """Deterministic per-(group, source) caps; keeps one row per entity+attribute pair
+    first, so the capped set stays diverse."""
+    kept, counts, dropped = [], Counter(), 0
+    ordered = sorted(rows, key=lambda row: stable_int("cap", split, row["id"]))
+    for row in ordered:
+        cap_key = (split, row["meta"]["group"], row["meta"]["source"])
+        limit = CAPS.get(cap_key)
+        if limit is not None and counts[cap_key] >= limit:
+            dropped += 1
+            continue
+        counts[cap_key] += 1
+        kept.append(row)
+    return kept, dropped
+
+
 # ------------------------------------------------------------------ builder
 
 
@@ -362,7 +533,8 @@ class Builder:
                                  "meta": meta})
 
 
-def build(kaggle_dir: Path | None, output: Path, kb_output: Path) -> dict[str, Any]:
+def build(kaggle_dir: Path | None, output: Path, kb_output: Path,
+          db_path: Path | None = None) -> dict[str, Any]:
     ak = load_ak(download("ak", kaggle_dir))
     ag = load_ag(download("ag", kaggle_dir))
     pdf_pairs = load_pdf_qa()
@@ -380,9 +552,15 @@ def build(kaggle_dir: Path | None, output: Path, kb_output: Path) -> dict[str, A
         else:
             group = "seen"
         groups[entity["id"]] = group
+    nm, sat = load_namaste()
+    namaste = nm + sat
+    namaste_by_id = {entity["id"]: entity for entity in namaste}
+    groups.update(namaste_groups(namaste))
     heldout = {key for key, group in groups.items() if group.startswith("heldout")}
 
     cards = [ak_card(e) for e in ak] + [ag_card(e) for e in ag]
+    cards += [N.nm_card(e, namaste_by_id) for e in nm]
+    cards += [N.sat_card(e, namaste_by_id) for e in sat]
     # Titles feed the BM25 title field: concept name / condition name, never question text.
     cards += [Card(f"concept-{c['id']}", c["id"].replace("-", " ").capitalize(),
                    CONCEPT_CITATION, c["answer"]) for c in concepts
@@ -443,6 +621,9 @@ def build(kaggle_dir: Path | None, output: Path, kb_output: Path) -> dict[str, A
                 if split == "test" and chance(0.5, "control", key):
                     builder.add(split, f"{key}|{slot}|closed", q(slot), answer,
                                 {**meta, "slot": slot, "group": "heldout_closed"})
+
+    # -- NAMASTE morbidity codes + Standardised Ayurveda Terminology
+    add_namaste(builder, namaste, groups, namaste_by_id)
 
     # -- reverse lookups (modern term -> Ayurvedic name), seen AK entities only
     by_modern: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -553,47 +734,90 @@ def build(kaggle_dir: Path | None, output: Path, kb_output: Path) -> dict[str, A
                          "attribute": "safety_diagnosis",
                          "gold": {"type": "safety", "kind": "diagnosis"}, "group": "safety"})
 
-    # -- write
+    # -- evaluation sets: caps, scorable references, no hidden leaks
+    from finetune.metrics import score_row
+
+    eval_notes: dict[str, Any] = {}
+    train_text = " " + " ".join(
+        re.sub(r"[^a-z0-9]+", " ", fold(message["content"]))
+        for row in builder.rows["train"] for message in row["messages"]) + " "
+    for split in ("validation", "test"):
+        rows, dropped = apply_caps(builder.rows[split], split)
+        unscorable = [row for row in rows if row["meta"]["gold"]["type"] != "none"
+                      and not score_row(row, row["messages"][-1]["content"])["correct"]]
+        rows = [row for row in rows if row not in unscorable]
+        # A closed-book question about an unseen term is only a generalization test if the
+        # term never appears anywhere in training (e.g. glossed inside another definition).
+        mentioned = []
+        for row in rows:
+            if row["meta"]["group"] in {"unseen_closed", "heldout_closed"}:
+                needle = " " + re.sub(r"[^a-z0-9]+", " ", fold(row["meta"]["name"])).strip() + " "
+                if len(needle.strip()) >= 4 and needle in train_text:
+                    mentioned.append(row)
+        rows = [row for row in rows if row not in mentioned]
+        builder.rows[split] = rows
+        eval_notes[split] = {"dropped_by_caps": dropped, "dropped_unscorable": len(unscorable),
+                             "dropped_closed_book_term_mentioned_in_training": len(mentioned)}
+
+    train_questions = {re.sub(r"\W+", " ", fold(row["question"])).strip()
+                       for row in builder.rows["train"]}
+    for split in ("validation", "test"):
+        leaked = [row["id"] for row in builder.rows[split]
+                  if row["meta"]["group"] != "safety"
+                  and re.sub(r"\W+", " ", fold(row["question"])).strip() in train_questions]
+        if leaked:
+            raise RuntimeError(f"{split} questions also appear in training: {leaked[:5]}")
+    trained_entities = {row["meta"]["entity"] for row in builder.rows["train"]}
+    if trained_entities & heldout:
+        raise RuntimeError("held-out entities leaked into training")
+    trained_keys = {N.group_key(namaste_by_id[e]["name"]) for e in trained_entities
+                    if e in namaste_by_id}
+    for split in ("validation", "test"):
+        for row in builder.rows[split]:
+            entity = row["meta"]["entity"]
+            if row["meta"]["group"] in {"heldout_open", "unseen_closed"} and \
+                    entity in namaste_by_id and \
+                    N.group_key(namaste_by_id[entity]["name"]) in trained_keys:
+                raise RuntimeError(f"unseen term {entity} has a spelling twin in training")
+    for row in builder.rows["train"]:
+        if set(row["meta"]["context_ids"]) & heldout:
+            raise RuntimeError("held-out card used as a training context")
+
+    # -- write (gzip with a fixed header, so the bytes - and MANIFEST hashes - are stable)
     output.mkdir(parents=True, exist_ok=True)
     kb_output.mkdir(parents=True, exist_ok=True)
+    for stale in output.glob("*.jsonl"):
+        stale.unlink()  # round-1 uncompressed files
     for split, rows in builder.rows.items():
         ids = [row["id"] for row in rows]
         if len(ids) != len(set(ids)):
             raise RuntimeError(f"duplicate row ids in {split}")
         rows = sorted(rows, key=lambda row: stable_int("order", split, row["id"]))
-        with (output / f"{split}.jsonl").open("w", encoding="utf-8") as handle:
-            for row in rows:
-                handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+        payload = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
+                          for row in rows).encode()
+        with (output / f"{split}.jsonl.gz").open("wb") as raw, \
+                gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0, compresslevel=9) \
+                as handle:
+            handle.write(payload)
     with (kb_output / "cards.jsonl").open("w", encoding="utf-8") as handle:
         for card in cards:
             handle.write(json.dumps(card.__dict__, ensure_ascii=False, sort_keys=True) + "\n")
 
-    train_questions = {re.sub(r"\W+", " ", row["question"].casefold()).strip()
-                       for row in builder.rows["train"]}
-    leaked = [row["id"] for row in builder.rows["test"]
-              if row["meta"]["group"] in {"seen_closed", "concepts", "heldout_open",
-                                          "heldout_closed"}
-              and re.sub(r"\W+", " ", row["question"].casefold()).strip() in train_questions]
-    if leaked:
-        raise RuntimeError(f"test questions also appear in training: {leaked[:5]}")
-    trained_entities = {row["meta"]["entity"] for row in builder.rows["train"]}
-    if trained_entities & heldout:
-        raise RuntimeError("held-out entities leaked into training")
-    for row in builder.rows["train"]:
-        if set(row["meta"]["context_ids"]) & heldout:
-            raise RuntimeError("held-out card used as a training context")
-
     stats: dict[str, Any] = {
         "entities": {"ayurvedic_knowledge": len(ak), "ayurgenixai": len(ag),
+                     "namaste_morbidity": len(nm), "namaste_sat": len(sat),
                      "groups": dict(Counter(groups.values()))},
         "cards": len(cards),
         "rows": {split: len(rows) for split, rows in builder.rows.items()},
         "by_group": {split: dict(Counter(r["meta"]["group"] for r in rows))
                      for split, rows in builder.rows.items()},
+        "by_source": {split: dict(Counter(r["meta"]["source"] for r in rows))
+                      for split, rows in builder.rows.items()},
         "open_book": {split: sum(r["meta"]["open_book"] for r in rows)
                       for split, rows in builder.rows.items()},
         "by_attribute_test": dict(Counter(f"{r['meta']['group']}:{r['meta']['attribute']}"
                                           for r in builder.rows["test"])),
+        "evaluation_filters": eval_notes,
         "heldout_bm25_recall_at_3": round(
             builder.retrieval_hits["gold_in_top3"]
             / max(1, sum(builder.retrieval_hits.values())), 4),
@@ -601,15 +825,42 @@ def build(kaggle_dir: Path | None, output: Path, kb_output: Path) -> dict[str, A
     (output / "stats.json").write_text(json.dumps(stats, indent=2, sort_keys=True) + "\n")
     manifest = {
         "inputs": {**{key: spec["sha256"] for key, spec in SOURCES.items()}, "pdf": PDF_SHA256,
+                   **{f"namaste_{key}": spec["sha256"] for key, spec in NAMASTE_SOURCES.items()},
                    "concepts.yaml": sha256_file(ROOT / "data/curated/concepts.yaml"),
                    "pdf_qa.yaml": sha256_file(ROOT / "data/curated/pdf_qa.yaml"),
                    "safety.yaml": sha256_file(ROOT / "data/curated/safety.yaml")},
         "outputs": {path.name: sha256_file(path) for path in
-                    sorted([*output.glob("*.jsonl"), kb_output / "cards.jsonl"])},
+                    sorted([*output.glob("*.jsonl.gz"), kb_output / "cards.jsonl"])},
         "system_prompt_sha256": hashlib.sha256(SYSTEM_PROMPT.encode()).hexdigest(),
     }
     (output / "MANIFEST.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    if db_path is not None:
+        from finetune import database
+
+        database.write(db_path, sources=source_records(), entities=ak + ag + namaste,
+                       groups=groups, cards=cards, rows=builder.rows, stats=stats)
     return stats
+
+
+def source_records() -> list[dict[str, Any]]:
+    records = [{"id": key, "name": spec["citation"], "license": "CC BY 4.0",
+                "url": f"https://www.kaggle.com/datasets/{spec['handle'].split('/versions')[0]}",
+                "sha256": spec["sha256"], "use": "train + retrieval"}
+               for key, spec in SOURCES.items()]
+    records += [{"id": key, "name": N.NM_CITATION if key == "nm" else N.SAT_CITATION,
+                 "license": "Government of India publication; reproduced with attribution "
+                            "for non-commercial education (see THIRD_PARTY_NOTICES.md)",
+                 "url": spec["url"], "sha256": spec["sha256"], "use": "train + retrieval"}
+                for key, spec in NAMASTE_SOURCES.items()]
+    records += [
+        {"id": "pdf", "name": PDF_CITATION, "license": "project data", "url": "",
+         "sha256": PDF_SHA256, "use": "train + retrieval"},
+        {"id": "concept", "name": CONCEPT_CITATION, "license": "project data", "url": "",
+         "sha256": sha256_file(ROOT / "data/curated/concepts.yaml"), "use": "train + retrieval"},
+        {"id": "safety", "name": "AcharyaGPT safety prompts", "license": "project data",
+         "url": "", "sha256": sha256_file(ROOT / "data/curated/safety.yaml"), "use": "train"},
+    ]
+    return records
 
 
 def main() -> None:
@@ -618,8 +869,13 @@ def main() -> None:
     parser.add_argument("--kaggle-dir", type=Path, help="local folder with the Kaggle CSVs")
     parser.add_argument("--output", type=Path, default=ROOT / "data" / "sft")
     parser.add_argument("--kb-output", type=Path, default=ROOT / "data" / "kb")
+    parser.add_argument("--db", type=Path, default=ROOT / "data" / "db" / "acharya.sqlite",
+                        help="SQLite database with every source, entity, fact, card and row")
+    parser.add_argument("--no-db", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(build(args.kaggle_dir, args.output, args.kb_output), indent=2))
+    stats = build(args.kaggle_dir, args.output, args.kb_output,
+                  None if args.no_db else args.db)
+    print(json.dumps(stats, indent=2))
 
 
 if __name__ == "__main__":
