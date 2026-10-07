@@ -1,3 +1,3 @@
-"""AcharyaGPT offline-first retrieval package."""
+"""AcharyaGPT: fine-tuned Qwen3-8B Ayurveda assistant (API + shared prompt/retrieval code)."""
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"

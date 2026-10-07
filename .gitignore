@@ -1,11 +1,9 @@
 # Secrets
 .env
 .env.*
-!.env.example
 *.key
 *.pem
 credentials.json
-credentials.*.json
 .kaggle/
 kaggle.json
 
@@ -14,18 +12,11 @@ kaggle.json
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.mypy_cache/
 .ruff_cache/
 
-# Generated data and model artifacts
-data/raw/
-data/processed/
+# Models, runs, logs (large; produced on Lightning)
 artifacts/
-checkpoints/
-adapters/
-models/
-.cache/
-dist/lightning/
+logs/
 *.safetensors
 *.gguf
 
@@ -33,3 +24,4 @@ dist/lightning/
 .DS_Store
 .idea/
 .vscode/
+xcuserdata/

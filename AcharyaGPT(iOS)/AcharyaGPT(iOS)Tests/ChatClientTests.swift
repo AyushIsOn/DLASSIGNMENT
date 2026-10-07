@@ -100,6 +100,37 @@ final class ChatClientTests: XCTestCase {
     }
 }
 
+final class BackendSettingsTests: XCTestCase {
+    func testNormalizationAddsSchemeAndTrimsSlashes() {
+        XCTAssertEqual(BackendSettings.normalized(" 192.168.1.20:8000/ "), "http://192.168.1.20:8000")
+        XCTAssertEqual(BackendSettings.normalized("abc.trycloudflare.com"), "https://abc.trycloudflare.com")
+        XCTAssertEqual(BackendSettings.normalized("https://abc.trycloudflare.com/"), "https://abc.trycloudflare.com")
+        XCTAssertEqual(BackendSettings.normalized("   "), BackendSettings.defaultURL)
+    }
+
+    func testLocalHostDetection() {
+        XCTAssertTrue(BackendSettings.isLocalHost("127.0.0.1"))
+        XCTAssertTrue(BackendSettings.isLocalHost("localhost"))
+        XCTAssertTrue(BackendSettings.isLocalHost("my-mac.local"))
+        XCTAssertTrue(BackendSettings.isLocalHost("10.0.0.7"))
+        XCTAssertFalse(BackendSettings.isLocalHost("example.com"))
+        XCTAssertFalse(BackendSettings.isLocalHost("999.1.1.1"))
+    }
+
+    func testPlainHTTPIsOnlyAllowedForLocalHosts() {
+        XCTAssertThrowsError(try ChatAPIClient(baseURL: URL(string: "http://example.com")!))
+        XCTAssertNoThrow(try ChatAPIClient(baseURL: URL(string: "http://192.168.1.5:8000")!))
+        XCTAssertNoThrow(try ChatAPIClient(baseURL: URL(string: "https://abc.trycloudflare.com")!))
+    }
+
+    func testSavedURLWinsOverDefault() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "acharya-tests-\(UUID().uuidString)"))
+        XCTAssertEqual(BackendSettings.currentURLString(defaults: defaults), BackendSettings.defaultURL)
+        defaults.set("https://abc.trycloudflare.com", forKey: BackendSettings.storageKey)
+        XCTAssertEqual(BackendSettings.currentURLString(defaults: defaults), "https://abc.trycloudflare.com")
+    }
+}
+
 @MainActor
 final class ChatViewModelTests: XCTestCase {
     func testSuccessCreatesCompletePairAndClearsInput() async throws {
@@ -107,9 +138,27 @@ final class ChatViewModelTests: XCTestCase {
         let model = ChatViewModel(client: provider)
         model.message = "  hello  "
         model.sendMessage()
+        XCTAssertEqual(model.pendingMessage, "hello")
         await waitUntil { !model.isWaitingForResponse }
         XCTAssertEqual(model.chatMessages.map(\.role), [.user, .assistant])
         XCTAssertEqual(model.message, "")
+        XCTAssertNil(model.pendingMessage)
+    }
+
+    func testClearConversation() async throws {
+        let model = ChatViewModel(client: StubClient(results: [.success(Self.response)]))
+        model.message = "hello"
+        model.sendMessage()
+        await waitUntil { !model.isWaitingForResponse }
+        model.clearConversation()
+        XCTAssertTrue(model.chatMessages.isEmpty)
+    }
+
+    func testServerResponseWithModelAndLatencyDecodes() throws {
+        let json = #"{"answer":"A","citations":[],"scores":[],"mode":"finetuned_rag","warning":null,"outcome":"answered","model":"ollama:acharyagpt","latency_ms":1234}"#
+        let response = try JSONDecoder().decode(ChatResponse.self, from: Data(json.utf8))
+        XCTAssertEqual(response.latencyMs, 1234)
+        XCTAssertEqual(response.model, "ollama:acharyagpt")
     }
 
     func testFailureRetainsInputAndRetrySucceeds() async throws {

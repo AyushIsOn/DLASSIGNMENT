@@ -1,0 +1,146 @@
+# Cleaned transcription of the original AcharyaGPT dataset (data/dataset V1.0.pdf,
+# sha256 ae5a30200145559dbd0b7ce25b58e6f1a31c272b98743d8a72353a0ddfbc5322).
+# Extracted with pypdf 6.19 (word spacing is broken in older pypdf), obvious typos fixed
+# (e.g. hv->have, verechana->virechana). The PDF's Ardita dosha question has no 'Q:'
+# marker; it is split into its own pair here (20 pairs in total).
+pairs:
+- question: I have scaly patchy raised lesions over b/l elbow and b/l knee joints with dryness and itching.
+    What is my ailment? What is the solution?
+  answer: 'The symptoms you''ve described, such as scaly patchy raised lesions over b/l elbow and b/l
+    knee joint with dryness and itching, can be analyzed through the lens of Ayurveda to predict a potential
+    problem or disease. Ayurveda identifies imbalances in the Vata, Pitta, and Kapha doshas as key factors
+    in various health issues. Vata Dosha: Scaly lesions: This is often associated with aggravated Vata
+    dosha. When Vata dosha is imbalanced, it can lead to scaly patchy raised lesions. When Pitta is aggravated,
+    it can cause raised lesions, redness of lesions. Kapha Dosha: Itching: it is the classic kapha dosha
+    symptom i.e. Pratyatma lakshana of kapha. Based on these symptoms and their association with dosha
+    imbalances, your condition could be related to an Eka kusta or psoriasis, which predominantly involves
+    imbalances of mainly Vata and Kapha doshas in association with pitta dosha.'
+- question: Is it Eka kusta only because of Vata dosha and Kapha Dosha.
+  answer: 'No in ayurveda it is mentioned any disease mentioned in Ayurveda it involves all the three
+    doshas but based on the percentage of involvement it has been mentioned the involvement of dosha.
+    It means Eka kusta have all the three dosha but based on majority it have vata and kapha dosha. Eka
+    kusta or psoriasis: It is a non- infectious chronic relapsing inflammatory skin disease characterized
+    by scaly erythematous patches. The eruptions is usually symmetrical and most commonly affects extensor
+    surfaces of elbow, knee, scalp, nails.'
+- question: Which are the doshas involved and which system is involved in Eka kusta.
+  answer: The prominent Dosha involved in Eka kusta is Vata and Kapha dosha in association with pitta
+    dosha also. The system or the srothas involved in Eka kusta is Rasavaha and raktavaha srothas.
+- question: What is solution for the disease Eka kusta in Ayurveda
+  answer: Principles of Ayurveda line of treatment involves Shodhana therapy mainly called as panchakarma
+    treatment and shamana line of treatment or palliative of maintenance treatment and diet regime including
+    do's and don'ts.
+- question: Can you elaborate the panchakarma and palliative treatment involved in Eka kusta.
+  answer: 'The important panchakarma done in most of the Eka kusta patients are virechana (purgative)
+    treatment with various medications. The palliative or the shamana treatment is done before panchakarma
+    as preprocedure or to prepare patient for panchakarma. Those are Amapachana: langhana (fasting), deepana
+    (stimulation of Agni i.e. digestive fire) as internal medication and Swedana (dry and hot application)
+    as external application. Snehanapana: as it carried out to facilitate the mobilization of doshas from
+    site of manifestation to the site of elimination i.e. kosta. And it also helps to loosen dosha and
+    dushya bonding. Ex: Maha tiktaka grhita. This ghrita has tikta rasa, madhura vipaka, ushna virya dravya.
+    And has properties like rakta shodaka, kandugna, kustagna. Virechana with trivith lehya: as it does
+    sukha virechana and removes vyadhi from mula. The do''s and don''ts include 1. Intake of light and
+    small quantity of food. 2. Avoid junk foods and which are heavy to digest. 3. Intake of hot water
+    only. 4. Avoid day sleep and sound sleep in night. 5. Avoid curd in food. 6. Have balanced diet and
+    nutritious food 7. Have daily mild exercise.'
+- question: I have recurrent productive cough, running nose and generalised body ache. What is my ailment?
+    What is the solution?
+  answer: The symptoms you've described, such as recurrent productive cough, running nose generalised
+    body ache, can be analyzed through the lens of Ayurveda to predict a potential problem or disease.
+    Ayurveda identifies imbalances in the kapha and Vata doshas as key factors in various health issues.
+- question: How vata and kapha doshas are involved?
+  answer: 'Involvement of apana vata is mentioned in the manifestation of kasa. Vata gets vitiated by
+    avarana of kapha. Apana vata thus obstructed from moving downwards, attains pratiloma gati and reaches
+    rasa sthana, causing discomfort in chest region. Hridya being the common mula sthana for both rasavaha
+    and pranavaha strotas, Vata and kapha doshas: a) recurrent productive cough: As kapha does avarana
+    to the apana vata this lakshana is seen b) running nose or peenasa: Vitiation of pranavaayu due to
+    kapha avarana will cause penasa. c) Heaviness or govrava: The feeling of heaviness in the body (Gourav)
+    is a Kapha-related symptom. Imbalanced Kapha can make you feel sluggish and weighed down. Based on
+    these symptoms and their association with dosha imbalances, your condition could be related to an
+    Kaphaja kasa or bronchitis, which predominantly involves imbalances of mainly Vata and Kapha doshas.'
+- question: Is it kaphaja kasa only because of Vata dosha and Kapha Dosha.
+  answer: No in ayurveda it is mentioned any disease mentioned in Ayurveda it involves all the three doshas
+    but based on the percentage of involvement it has been mentioned the involvement of dosha. It means
+    kaphaja kasa have all the three dosha but based on majority it have vata and kapha dosha.
+- question: Which are the doshas involved and which system is involved in kaphaja kasa
+  answer: The prominent Dosha involved in kaphaja kasa is Vata and Kapha doshas. The system or the srothas
+    involved in it is Rasavaha srothas and which can be said as plasma origin and pranavaha srothas as
+    respiratory system for easy understanding.
+- question: What is solution for the disease kaphaja kasa in Ayurveda
+  answer: Principles of Ayurveda line of treatment involves Shodhana therapy mainly called as panchakarma
+    treatment and shamana line of treatment or palliative of maintenance treatment and diet regime including
+    do's and don'ts.
+- question: Can you elaborate the panchakarma and palliative treatment involved in kaphaja kasa.
+  answer: 'The important panchakarma done in most of the kaphaja kasa patients are virechana (purgative)
+    treatment followed by Nasya treatment with various medications. The palliative or the shamana treatment
+    is done before panchakarma as preprocedure or to prepare patient for panchakarma. Those are Nidana
+    parivarjana Amapachana: langhana (fasting), deepana (stimulation of Agni i.e. digestive fire) as internal
+    medication and Swedana (dry and hot application) as external application. Vamana karma: It removes
+    the avarana of vata by kapha Ex: kantakari gritha Nasya karma: it is helpful because of sthana samshraya
+    is in urdwajatrugata. The do''s and don''ts include 1. Intake of light and small quantity of food.
+    2. Avoid cold exposure and junk foods and which are heavy to digest. 3. Intake of hot water only.
+    4. Avoid day sleep and sound sleep in night. 5. Avoid curd in food. 6. Have balanced diet and nutritious
+    food 7. Have daily mild exercise.'
+- question: I have dropping of left eye lid, eye brow, muscle weakness, salivation from left side of mouth,
+    numbness of left side of face.what is my ailment? What is the solution?
+  answer: The symptoms you have described can be analysed as imbalance of vata and kapha. Vata dosha All
+    the movements are done by ligament and tendons, when the ligament and tendons dedication takes place,
+    the flaccidity of the muscle doesn't allow us to do facial movements properly. Dropping of eye lid
+    and eye brow-- due to increased vata flaccidity of the ocular muscles takes place hence not able to
+    lift the eye lid completely. Excessive salivation-- flaccid muscle of the mouth unable us to close
+    the mouth completely, hence excessive salivation occurs. Kapha dosha Numbness-- due to kapha dusti
+    in the head region there will be numbness. Based on these symptoms and their association with the
+    dosha imbalance your condition is co related to Ardita.
+- question: Which are the doshas involved and which system is involved in Ardita?
+  answer: The prominent Dosha involved in Ardita is Vata and Kapha dosha. The system or the srothas involved
+    in Ardita is Rasavaha srothas, raktavaha, mamsavaha and pranavaha.
+- question: What is solution for the disease Ardita in Ayurveda
+  answer: Principles of Ayurveda line of treatment involves Shodhana therapy mainly called as panchakarma
+    treatment and shamana line of treatment or palliative of maintenance treatment and diet regime including
+    do's and don'ts.
+- question: Can you elaborate the panchakarma and palliative treatment involved in Ardita?
+  answer: 'The important panchakarma done in most of the Ardita patients are nasya (nasal instillation
+    of the medicine) treatment followed by Tarpana treatment (nourishing the eyes) with jeevantyadi ghruta.
+    Moordha taila (holding oil on head) prepanchakarma procedure are Amapachana: langhana (fasting), deepana
+    (stimulation of Agni i.e. digestive fire) as internal medication and Swedana (dry and hot application)
+    as external application. The do''s and don''ts include 1. Intake of light and small quantity of food.
+    2. Avoid cold exposure and junk foods and which are heavy to digest. 3. Intake of hot water only.
+    4. Avoid day sleep and sound sleep in night. 5. Avoid curd in food. 6. Have balanced diet and nutritious
+    food 7. Have daily mild exercise.'
+- question: I am having stomach ache on & off since a month, improper passage of stools, heaviness all
+    over body, vomiting after having food sometimes, constipation with bloody stools. What is my ailment?
+    What is the solution?
+  answer: 'The symptoms you''ve described, such as stomach ache, feeling constipated on and off, heaviness
+    of body, vomiting can be analyzed through the lens of Ayurveda to predict a potential problem or disease.
+    Ayurveda identifies imbalances in the Vata, Pitta, and Kapha doshas as key factors in various health
+    issues. Vata Dosha: Body Ache: Body ache is often associated with aggravated Vata dosha. When Vata
+    dosha is imbalanced, it can lead to bodyache. When Pitta is aggravated, it can cause sour and bitter
+    belching, burning sensation, drava mal association with kapha leading to kapha presence in mala. Thirst:
+    Experiencing increased thirst (Trushna) can be linked to pitta dosha as it disrupts the body''s natural
+    balance. Kapha Dosha: When kapha dosha increases kleda present in amashaya increases which leads to
+    ama formation leading heaviness in body and loss of appetite. Heaviness: The feeling of heaviness
+    in the body (Gourav) is a Kapha-related symptom. Imbalanced Kapha can make you feel sluggish and weighed
+    down. Lethargy: Kapha imbalances can lead to lethargy (Aalasya), making you feel tired and lacking
+    in energy. Based on these symptoms and their association with dosha imbalances, your condition could
+    be related to an grahani or Irritable bowel syndrome, which predominantly involves imbalances of all
+    tridoshas in association with ama dosha.'
+- question: How to interpret doshas and system involvement in Grahani.
+  answer: By name itself it suggest the word grahani suggests the system associated to digestive system.
+    Undigested food or undigested metabolic product which is form of imbalance of kapha along with pitta
+    and vata dosha.
+- question: Which are the doshas involved and which system is involved in Grahani.
+  answer: The prominent Dosha involved in Grahani is all doshas. The system or the srothas involved in
+    grahani is Annavaha and Rasavaha srothas which can be said as our digestive system and plasma origin
+    for easy understanding.
+- question: What is solution for the disease Grahani in Ayurveda
+  answer: Principles of Ayurveda line of treatment involves Shodhana and shamana both the therapy mainly
+    called as panchakarma treatment and shamana line of treatment or palliative of maintenance treatment
+    and diet regime including do's and don'ts.
+- question: Can you elaborate the panchakarma and palliative treatment involved in Grahani.
+  answer: 'The important panchakarma done in most of the Grahani patients are virechana (purgative) treatment.
+    The palliative or the shamana treatment is done before panchakarma as preprocedure or to prepare patient
+    for panchakarma. Those are Amapachana: langhana (fasting), deepana (stimulation of Agni i.e. digestive
+    fire) as internal medication such as 1. Chitrakadi gutika 2. Samshamani vati 3. Trayushnadi grita
+    The do''s and don''ts include 1. Intake of light and small quantity of food. 2. Avoid cold exposure
+    and junk foods and which are heavy to digest. 3. Intake of hot water only. 4. Avoid day sleep and
+    sound sleep in night. 5. Avoid curd in food. 6. Have balanced diet and nutritious food 7. Have daily
+    mild exercise.'

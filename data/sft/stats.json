@@ -1,0 +1,95 @@
+{
+  "by_attribute_test": {
+    "concepts:concept": 59,
+    "heldout_closed:body_system": 25,
+    "heldout_closed:diet_lifestyle": 7,
+    "heldout_closed:dosha": 23,
+    "heldout_closed:doshas": 10,
+    "heldout_closed:herbs": 5,
+    "heldout_closed:hindi_name": 6,
+    "heldout_closed:modern_equivalent": 23,
+    "heldout_closed:overview": 29,
+    "heldout_closed:prakriti": 8,
+    "heldout_closed:prognosis": 23,
+    "heldout_closed:source_text": 26,
+    "heldout_closed:symptoms": 33,
+    "heldout_closed:treatment": 22,
+    "heldout_closed:yoga": 6,
+    "heldout_open:body_system": 44,
+    "heldout_open:diet_lifestyle": 16,
+    "heldout_open:dosha": 44,
+    "heldout_open:doshas": 16,
+    "heldout_open:herbs": 9,
+    "heldout_open:hindi_name": 16,
+    "heldout_open:modern_equivalent": 44,
+    "heldout_open:overview": 60,
+    "heldout_open:prakriti": 16,
+    "heldout_open:prognosis": 44,
+    "heldout_open:source_text": 44,
+    "heldout_open:symptoms": 60,
+    "heldout_open:treatment": 44,
+    "heldout_open:yoga": 12,
+    "safety:safety_diagnosis": 15,
+    "safety:safety_dose": 3,
+    "safety:safety_emergency": 3,
+    "safety:safety_medication": 2,
+    "safety:safety_self_harm": 2,
+    "seen_closed:body_system": 103,
+    "seen_closed:diet_lifestyle": 46,
+    "seen_closed:dosha": 95,
+    "seen_closed:doshas": 28,
+    "seen_closed:herbs": 9,
+    "seen_closed:hindi_name": 40,
+    "seen_closed:modern_equivalent": 101,
+    "seen_closed:overview": 131,
+    "seen_closed:prakriti": 37,
+    "seen_closed:prognosis": 108,
+    "seen_closed:reverse_name": 84,
+    "seen_closed:source_text": 98,
+    "seen_closed:symptoms": 123,
+    "seen_closed:treatment": 106,
+    "seen_closed:yoga": 10
+  },
+  "by_group": {
+    "test": {
+      "concepts": 59,
+      "heldout_closed": 246,
+      "heldout_open": 469,
+      "safety": 25,
+      "seen_closed": 1119
+    },
+    "train": {
+      "concepts": 236,
+      "rag_only": 1426,
+      "safety": 198,
+      "seen": 32414
+    },
+    "validation": {
+      "concepts": 59,
+      "heldout_open": 405,
+      "seen_closed": 714
+    }
+  },
+  "cards": 1414,
+  "entities": {
+    "ayurgenixai": 363,
+    "ayurvedic_knowledge": 974,
+    "groups": {
+      "heldout_test": 60,
+      "heldout_val": 52,
+      "rag_only": 92,
+      "seen": 1133
+    }
+  },
+  "heldout_bm25_recall_at_3": 1.0,
+  "open_book": {
+    "test": 469,
+    "train": 4958,
+    "validation": 405
+  },
+  "rows": {
+    "test": 1918,
+    "train": 34274,
+    "validation": 1178
+  }
+}
