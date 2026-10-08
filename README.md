@@ -8,7 +8,7 @@ RAG demo over one PDF). Educational only - not medical advice.
 
 ![AcharyaGPT pipeline](docs/pipeline_flow.png)
 
-(Diagram source: `scripts/make_flow_diagram.py`.)
+(Diagram: `scripts/make_flow_diagram.py`. All metrics of a run in one image: `python scripts/make_metrics_figure.py --run-dir artifacts/run` → `artifacts/run/report/metrics_summary.png`.)
 
 ## Why the previous training showed no improvement
 
