@@ -306,6 +306,11 @@ def train(config: Config, *, max_steps: int | None = None, smoke: bool = False,
 
     started = time.time()
     limit_seconds = float(hp["max_train_minutes"]) * 60
+    deadline = os.environ.get("ACHARYA_TRAIN_DEADLINE")  # unix time, set by lightning_gpu_run.sh
+    if deadline:
+        limit_seconds = min(limit_seconds, max(120.0, float(deadline) - started))
+        log("time_budget", training_minutes_allowed=round(limit_seconds / 60, 1),
+            note="training stops here, saves the best adapter, evaluation still runs")
     save_seconds = float(hp.get("save_every_minutes", 10)) * 60
     stop = {"requested": False, "reason": None}
     clock = {"last_save": time.time(), "last_log": time.time(), "last_tokens": 0}
@@ -322,7 +327,7 @@ def train(config: Config, *, max_steps: int | None = None, smoke: bool = False,
         def on_step_end(self, _args: Any, state: Any, control: Any, **_: Any) -> None:
             if time.time() - started > limit_seconds and not stop["requested"]:
                 stop.update(requested=True, reason="max_train_minutes reached")
-                log("time_limit", minutes=hp["max_train_minutes"])
+                log("time_limit", minutes=round(limit_seconds / 60, 1))
             if time.time() - clock["last_save"] >= save_seconds:
                 control.should_save = True  # time-based resume point (every ~10 minutes)
             if stop["requested"]:
