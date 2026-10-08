@@ -2,101 +2,364 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0d0f0f">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0b0d0d">
 <title>AcharyaGPT</title>
+<!--
+  One page, two ways to run it:
+    * served by the AcharyaGPT API at GET /  -> talks to the same server
+    * bundled inside the Android app (file://) -> talks to the server URL set in Settings
+-->
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 16px/1.45 -apple-system, system-ui, Roboto, sans-serif;
-         background: #0d0f0f; color: #ebebeb; height: 100dvh; display: flex; flex-direction: column; }
-  header { padding: 14px 16px; display: flex; align-items: center; gap: 10px;
-           border-bottom: 1px solid #ffffff1f; }
-  header h1 { font-size: 18px; margin: 0; flex: 1; }
-  header button { background: none; border: 0; color: #ebebeb; font-size: 20px; padding: 4px 8px; }
-  #log { flex: 1; overflow-y: auto; padding: 16px; }
-  .intro { text-align: center; color: #aaa; margin: 24px 8px; }
-  .intro b { color: #ebebeb; font-size: 20px; display: block; margin-bottom: 6px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
-  .chip { border: 1px solid #ffffff55; border-radius: 16px; padding: 6px 12px; background: #ffffff10;
-          color: #ebebeb; font-size: 14px; }
-  .msg { border: 1px solid #ffffff4d; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;
-         background: linear-gradient(135deg, #ffffff14, #ffffff2e); white-space: pre-wrap; }
-  .who { font-size: 12px; font-weight: 700; color: #aaa; margin-bottom: 4px; }
-  .meta { margin-top: 8px; font-size: 12px; color: #9aa; }
-  .badge { display: inline-block; border-radius: 8px; padding: 1px 7px; margin-right: 6px;
-           background: #0f766e55; color: #5eead4; font-weight: 700; }
-  .badge.safety { background: #dc262655; color: #fca5a5; }
-  details { margin-top: 6px; font-size: 13px; color: #bbb; }
-  .err { color: #f87171; font-size: 14px; padding: 0 16px 8px; }
-  form { display: flex; gap: 8px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-         border-top: 1px solid #ffffff1f; background: #151818; }
-  textarea { flex: 1; resize: none; border-radius: 14px; border: 1px solid #ffffff66;
-             background: #00000066; color: #ebebeb; padding: 12px; font: inherit; max-height: 120px; }
-  form button { border-radius: 14px; border: 1px solid #ffffff66; background: #ffffff1f;
-                color: #ebebeb; padding: 0 16px; font-size: 16px; }
-  form button:disabled { opacity: .5; }
+  :root {
+    color-scheme: dark;
+    --bg: #0b0d0d; --surface: #141818; --surface2: #1b2020; --line: #ffffff1c;
+    --text: #ececec; --muted: #9aa3a3; --accent: #5ac63f; --accent2: #2f8f2a;
+    --danger: #f87171; --radius: 18px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.5 "Google Sans", Roboto, -apple-system, system-ui, sans-serif;
+         display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* top app bar */
+  .bar { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 12px 10px 16px;
+         background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(14px);
+         border-bottom: 1px solid var(--line); z-index: 2; }
+  .bar .logo { width: 30px; height: 26px; }
+  .bar .title { flex: 1; line-height: 1.15; }
+  .bar .title b { display: block; font-size: 18px; font-weight: 600; }
+  .bar .title small { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .dot.ok { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .dot.bad { background: var(--danger); }
+  .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent;
+              display: grid; place-items: center; }
+  .icon-btn:active { background: var(--surface2); }
+  .icon-btn svg { width: 22px; height: 22px; stroke: var(--text); fill: none; stroke-width: 1.8;
+                  stroke-linecap: round; stroke-linejoin: round; }
+
+  /* conversation */
+  #log { flex: 1; overflow-y: auto; padding: 16px 14px 8px; scroll-behavior: smooth; overscroll-behavior: contain; }
+  .empty { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+           text-align: center; padding: 8px 6px 24px; }
+  .empty .big { width: 74px; height: 62px; margin-bottom: 14px; filter: drop-shadow(0 6px 22px #5ac63f40); }
+  .empty h2 { margin: 0 0 6px; font-size: 24px; font-weight: 600; }
+  .empty p { margin: 0 0 22px; color: var(--muted); font-size: 14px; max-width: 320px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 460px; }
+  .card { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 16px;
+          padding: 12px 13px; font-size: 14px; line-height: 1.35; min-height: 74px; }
+  .card span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .card:active { background: var(--surface2); transform: scale(.98); }
+
+  .row { display: flex; gap: 10px; margin: 0 0 14px; animation: in .22s ease-out; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .row.user { justify-content: flex-end; }
+  .bubble { max-width: 84%; padding: 11px 15px; border-radius: var(--radius); white-space: pre-wrap;
+            word-wrap: break-word; }
+  .user .bubble { background: linear-gradient(135deg, var(--accent2), #23701f); border-bottom-right-radius: 6px; }
+  .bot .avatar { width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--surface2);
+                 border: 1px solid var(--line); display: grid; place-items: center; }
+  .bot .avatar svg { width: 20px; height: 17px; }
+  .bot .bubble { background: var(--surface); border: 1px solid var(--line); border-top-left-radius: 6px; }
+  .bot .bubble.err { border-color: #f8717166; color: #fecaca; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px; color: var(--muted);
+          font-size: 12px; }
+  .chip { border-radius: 999px; padding: 2px 9px; font-weight: 600; font-size: 11.5px;
+          background: #5ac63f22; color: #9be38a; border: 1px solid #5ac63f44; }
+  .chip.safety { background: #f8717122; color: #fca5a5; border-color: #f8717155; }
+  .act { border: 0; background: transparent; color: var(--muted); font-size: 12px; padding: 2px 6px; border-radius: 8px; }
+  .act:active { background: var(--surface2); }
+  .sources { margin-top: 8px; display: none; }
+  .sources.open { display: block; }
+  .src { margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line);
+         font-size: 13px; color: #c9cfcf; white-space: normal; }
+  .src b { display: block; font-size: 11.5px; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
+  .typing { display: flex; gap: 5px; padding: 14px 16px; }
+  .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: b 1.2s infinite; }
+  .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes b { 0%, 60%, 100% { opacity: .3; transform: none; } 30% { opacity: 1; transform: translateY(-4px); } }
+
+  /* composer */
+  .composer { padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--bg); }
+  .pill { display: flex; align-items: flex-end; gap: 8px; background: var(--surface); border: 1px solid var(--line);
+          border-radius: 26px; padding: 6px 6px 6px 18px; }
+  .pill:focus-within { border-color: #5ac63f88; }
+  textarea { flex: 1; border: 0; outline: 0; resize: none; background: transparent; color: var(--text);
+             font: inherit; padding: 9px 0; max-height: 132px; }
+  textarea::placeholder { color: #7d8686; }
+  .send { width: 42px; height: 42px; flex: none; border: 0; border-radius: 50%; background: var(--accent);
+          display: grid; place-items: center; transition: transform .1s, opacity .2s; }
+  .send svg { width: 20px; height: 20px; fill: #062306; margin-left: -2px; }
+  .send:disabled { opacity: .35; }
+  .send:active:not(:disabled) { transform: scale(.92); }
+  .send.stop { background: var(--surface2); }
+  .send.stop svg { fill: var(--text); margin: 0; }
+  .note { text-align: center; color: #6b7474; font-size: 11px; margin-top: 7px; }
+
+  /* settings sheet */
+  .scrim { position: fixed; inset: 0; background: #000a; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 5; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface);
+           border-radius: 24px 24px 0 0; border-top: 1px solid var(--line);
+           padding: 10px 20px calc(22px + env(safe-area-inset-bottom)); transform: translateY(105%);
+           transition: transform .25s ease; max-width: 640px; margin: 0 auto; }
+  .sheet.open { transform: none; }
+  .grab { width: 38px; height: 4px; border-radius: 4px; background: #ffffff33; margin: 0 auto 14px; }
+  .sheet h3 { margin: 0 0 4px; font-size: 18px; }
+  .sheet p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  .field { width: 100%; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+           font: inherit; padding: 13px 14px; outline: 0; }
+  .field:focus { border-color: #5ac63f88; }
+  .btns { display: flex; gap: 10px; margin-top: 14px; }
+  .btn { flex: 1; border-radius: 14px; padding: 12px; border: 1px solid var(--line); background: var(--surface2); }
+  .btn.primary { background: var(--accent); color: #062306; border: 0; font-weight: 600; }
+  #testMsg { margin-top: 12px; font-size: 13px; min-height: 18px; color: var(--muted); }
+  #testMsg.ok { color: #9be38a; } #testMsg.bad { color: var(--danger); }
+  .hint { margin-top: 14px; font-size: 12px; color: #7d8686; line-height: 1.6; }
+  .hint code { color: #c9cfcf; }
 </style>
 </head>
 <body>
-<header><h1>AcharyaGPT</h1><button id="new" title="New chat">&#9998;</button></header>
-<div id="log">
-  <div class="intro" id="intro"><b>Namaste, I am AcharyaGPT</b>
-    An educational assistant for Ayurveda - not medical advice.
-    <div class="chips">
-      <button class="chip">What is Amlapitta?</button>
-      <button class="chip">Which dosha is predominant in Ardita?</button>
-      <button class="chip">What are the three doshas?</button>
-      <button class="chip">What does vatavyadhih mean?</button>
-    </div>
-  </div>
-</div>
-<div class="err" id="err"></div>
-<form id="f"><textarea id="q" rows="1" placeholder="What's your query?" enterkeyhint="send"></textarea>
-  <button id="send">Send</button></form>
+<header class="bar">
+  <svg class="logo" viewBox="0 0 62 52"><use href="#leaf"/></svg>
+  <div class="title"><b>AcharyaGPT</b><small><span class="dot" id="dot"></span><span id="state">connecting…</span></small></div>
+  <button class="icon-btn" id="newBtn" aria-label="New chat"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+  <button class="icon-btn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
+</header>
+
+<main id="log"></main>
+
+<footer class="composer">
+  <form class="pill" id="form">
+    <textarea id="q" rows="1" placeholder="Ask about Ayurveda…" enterkeyhint="send" autocomplete="off"></textarea>
+    <button class="send" id="send" aria-label="Send" disabled><svg viewBox="0 0 24 24" id="sendIcon"><path d="M3.4 20.4 21 12 3.4 3.6l-.1 6.5L15 12 3.3 13.9z"/></svg></button>
+  </form>
+  <div class="note">Educational information only - not medical advice.</div>
+</footer>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="sheet" aria-label="Settings">
+  <div class="grab"></div>
+  <h3>Server</h3>
+  <p>The AcharyaGPT API that runs the fine-tuned model.</p>
+  <input class="field" id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://….trycloudflare.com">
+  <div class="btns"><button class="btn" id="testBtn">Test connection</button><button class="btn primary" id="saveBtn">Save</button></div>
+  <div id="testMsg"></div>
+  <div class="hint">Lightning GPU: the <code>https://…trycloudflare.com</code> URL printed by <code>lightning_serve.sh</code><br>
+    Mac on the same Wi-Fi: <code>http://&lt;Mac-IP&gt;:8000</code> from <code>mac_serve.sh --lan</code></div>
+</section>
+
+<svg width="0" height="0" style="position:absolute"><defs><g id="leaf">
+  <path d="M1.6236 0.657337C-0.11721 -1.88521 0.406146 19.1121 7.25431 26.3055C10.6023 29.8019 16.1031 35.0726 23.393 36.7986C22.0308 25.7821 14.2138 15.3707 4.13273 12.0227C16.8566 14.929 27.268 27.8495 27.0193 40.5585C27.1826 45.8144 27.8396 53.4643 28.1848 50.9514C34.3277 5.30444 13.3304 17.8984 1.6236 0.657337Z" fill="#5AC63F"/>
+  <path d="M60.3842 0.657356C62.1101 -1.8889 61.5979 19.1121 54.7349 26.3055C51.4017 29.802 45.8861 35.0726 38.5962 36.7986C39.9584 25.797 47.7754 15.3707 57.8713 12.0227C45.1326 14.929 34.7212 27.8496 34.9662 40.5586C34.8845 45.6474 34.1607 53.4643 33.8155 50.9515C27.6615 5.30446 48.6625 17.8984 60.3842 0.657356Z" fill="#5AC63F"/>
+  <path d="M35.3299 13.0546C35.3299 15.4041 33.4258 17.3082 31.08 17.3082C28.7342 17.3082 26.8449 15.4041 26.8449 13.0546C26.8449 10.705 28.749 8.80092 31.08 8.80092C33.4109 8.80092 35.3299 10.705 35.3299 13.0546Z" fill="#5AC63F"/>
+</g></defs></svg>
+
 <script>
-const log = document.getElementById("log"), q = document.getElementById("q"),
-      send = document.getElementById("send"), err = document.getElementById("err");
-let history = [];
-const labels = {finetuned_rag: "Fine-tuned + RAG", finetuned: "Fine-tuned", safety: "Safety"};
-function add(who, text, res) {
-  document.getElementById("intro")?.remove();
-  const div = document.createElement("div"); div.className = "msg";
-  div.innerHTML = `<div class="who">${who}</div>`;
-  div.appendChild(document.createTextNode(text));
-  if (res) {
-    const meta = document.createElement("div"); meta.className = "meta";
-    const badge = document.createElement("span");
-    badge.className = "badge" + (res.mode === "safety" ? " safety" : "");
-    badge.textContent = labels[res.mode] || res.mode; meta.appendChild(badge);
-    if (res.latency_ms && res.mode !== "safety") meta.append((res.latency_ms / 1000).toFixed(1) + " s");
-    div.appendChild(meta);
-    for (const c of res.citations || []) {
-      const d = document.createElement("details"); const s = document.createElement("summary");
-      s.textContent = c.source; d.appendChild(s); d.append(c.text); div.appendChild(d);
-    }
+const $ = id => document.getElementById(id);
+const log = $("log"), q = $("q"), send = $("send");
+const bundled = location.protocol === "file:";          // inside the Android app
+const KEY = "acharya.backendURL", CHAT = "acharya.chat";
+let history = JSON.parse(localStorage.getItem(CHAT) || "[]");   // [{role, content, res?}]
+let controller = null;
+
+const SUGGESTIONS = [
+  ["Condition", "What is Amlapitta?"],
+  ["Doshas", "Which dosha is predominant in Ardita?"],
+  ["Basics", "What are the three doshas?"],
+  ["NAMASTE term", "What does vatavyadhih mean?"],
+];
+const MODES = {finetuned_rag: "Fine-tuned + sources", finetuned: "Fine-tuned", safety: "Safety"};
+
+function normalize(raw) {
+  let v = (raw || "").trim().replace(/\/+$/, "");
+  if (!v) return "";
+  if (!/^https?:\/\//i.test(v)) {
+    const host = v.split(/[:/]/)[0];
+    const local = /^\d+\.\d+\.\d+\.\d+$/.test(host) || host === "localhost" || host.endsWith(".local");
+    v = (local ? "http://" : "https://") + v;
   }
-  log.appendChild(div); log.scrollTop = log.scrollHeight; return div;
+  return v;
 }
+function base() {
+  const saved = localStorage.getItem(KEY);
+  if (saved) return saved;
+  return bundled ? "" : location.origin;
+}
+const api = path => base() + path;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function leaf() {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 62 52");
+  s.innerHTML = '<use href="#leaf"/>';
+  return s;
+}
+function scrollDown() { requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; }); }
+
+function renderEmpty() {
+  const box = el("div", "empty");
+  const big = leaf(); big.classList.add("big"); box.appendChild(big);
+  box.appendChild(el("h2", "", "Namaste"));
+  box.appendChild(el("p", "", "Ask me about Ayurvedic conditions, doshas, herbs and NAMASTE terminology."));
+  const cards = el("div", "cards");
+  for (const [label, text] of SUGGESTIONS) {
+    const c = el("button", "card"); c.appendChild(el("span", "", label)); c.append(text);
+    c.onclick = () => ask(text); cards.appendChild(c);
+  }
+  box.appendChild(cards);
+  log.replaceChildren(box);
+}
+
+function userRow(text) {
+  const row = el("div", "row user"); row.appendChild(el("div", "bubble", text));
+  log.appendChild(row); scrollDown();
+}
+function botRow(text, res, isError) {
+  const row = el("div", "row bot");
+  const av = el("div", "avatar"); av.appendChild(leaf()); row.appendChild(av);
+  const bubble = el("div", "bubble" + (isError ? " err" : ""), text);
+  if (res) {
+    const meta = el("div", "meta");
+    meta.appendChild(el("span", "chip" + (res.mode === "safety" ? " safety" : ""), MODES[res.mode] || res.mode));
+    if (res.latency_ms && res.mode !== "safety") meta.append((res.latency_ms / 1000).toFixed(1) + " s");
+    const copy = el("button", "act", "Copy");
+    copy.onclick = () => { navigator.clipboard?.writeText(text); copy.textContent = "Copied"; };
+    meta.appendChild(copy);
+    const cites = res.citations || [];
+    if (cites.length) {
+      const box = el("div", "sources");
+      for (const c of cites) {
+        const s = el("div", "src"); s.appendChild(el("b", "", c.source)); s.append(c.text); box.appendChild(s);
+      }
+      const t = el("button", "act", `Sources (${cites.length})`);
+      t.onclick = () => { box.classList.toggle("open"); if (box.classList.contains("open")) scrollDown(); };
+      meta.appendChild(t); bubble.appendChild(meta); bubble.appendChild(box);
+    } else bubble.appendChild(meta);
+  }
+  row.appendChild(bubble); log.appendChild(row); scrollDown();
+}
+function typingRow() {
+  const row = el("div", "row bot");
+  const av = el("div", "avatar"); av.appendChild(leaf()); row.appendChild(av);
+  const b = el("div", "bubble typing"); b.innerHTML = "<i></i><i></i><i></i>"; row.appendChild(b);
+  log.appendChild(row); scrollDown(); return row;
+}
+function renderAll() {
+  if (!history.length) return renderEmpty();
+  log.replaceChildren();
+  for (const m of history) m.role === "user" ? userRow(m.content) : botRow(m.content, m.res);
+}
+function save() { localStorage.setItem(CHAT, JSON.stringify(history.slice(-40))); }
+
+function setBusy(busy) {
+  send.classList.toggle("stop", busy);
+  send.setAttribute("aria-label", busy ? "Stop" : "Send");
+  $("sendIcon").innerHTML = busy ? '<rect x="6" y="6" width="12" height="12" rx="2"/>'
+                                 : '<path d="M3.4 20.4 21 12 3.4 3.6l-.1 6.5L15 12 3.3 13.9z"/>';
+  send.disabled = !busy && !q.value.trim();
+}
+
 async function ask(text) {
-  text = text.trim(); if (!text || send.disabled) return;
-  q.value = ""; q.blur(); err.textContent = ""; send.disabled = true;
-  add("You", text); const wait = add("AcharyaGPT", "thinking...");
+  text = (text || "").trim();
+  if (!text || controller) return;
+  if (!base()) { openSheet(); return; }
+  q.value = ""; grow(); q.blur();
+  if (!history.length) log.replaceChildren();
+  userRow(text);
+  const wait = typingRow();
+  controller = new AbortController(); setBusy(true);
+  const timer = setTimeout(() => controller?.abort("timeout"), 180000);
+  const prior = history.filter(m => !m.error).slice(-4).map(m => ({role: m.role, content: m.content}));
   try {
-    const r = await fetch("v1/chat", {method: "POST", headers: {"Content-Type": "application/json"},
-                                     body: JSON.stringify({message: text, history: history.slice(-4)})});
-    const body = await r.json();
+    const r = await fetch(api("/v1/chat"), {method: "POST", signal: controller.signal,
+      headers: {"Content-Type": "application/json"}, body: JSON.stringify({message: text, history: prior})});
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body?.error?.message || `Server error (${r.status})`);
     wait.remove();
-    if (!r.ok) throw new Error(body?.error?.message || ("HTTP " + r.status));
-    add("AcharyaGPT", body.answer, body);
-    history.push({role: "user", content: text}, {role: "assistant", content: body.answer});
-  } catch (e) { wait.remove(); err.textContent = "Error: " + e.message; q.value = text; }
-  finally { send.disabled = false; }
+    botRow(body.answer, body);
+    history.push({role: "user", content: text}, {role: "assistant", content: body.answer, res: body});
+    save(); status(true);
+  } catch (e) {
+    wait.remove();
+    const msg = e.name === "AbortError" || e === "timeout"
+      ? (controller?.signal.reason === "timeout" ? "The request timed out. The model may still be loading - try again." : "Stopped.")
+      : (e.message.includes("fetch") || e.message.includes("Load failed") || e.message.includes("NetworkError")
+          ? "Can't reach the server. Check that it's running and the URL in Settings." : e.message);
+    botRow(msg, null, true);
+    q.value = text; grow();
+    if (!(e.name === "AbortError")) status(false);
+  } finally {
+    clearTimeout(timer); controller = null; setBusy(false);
+  }
 }
-document.getElementById("f").addEventListener("submit", e => { e.preventDefault(); ask(q.value); });
-q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q.value); } });
-log.addEventListener("click", e => { if (e.target.classList.contains("chip")) ask(e.target.textContent); else q.blur(); });
-document.getElementById("new").onclick = () => location.reload();
+
+async function status(known) {
+  const dot = $("dot"), state = $("state");
+  if (known === true) { dot.className = "dot ok"; state.textContent = "online"; return true; }
+  if (!base()) { dot.className = "dot bad"; state.textContent = "set the server in Settings"; return false; }
+  try {
+    const r = await fetch(api("/health/ready"), {signal: AbortSignal.timeout(15000)});
+    const h = await r.json();
+    dot.className = "dot " + (h.ready ? "ok" : "bad");
+    state.textContent = h.ready ? "online" : "model loading…";
+    return h.ready;
+  } catch { dot.className = "dot bad"; state.textContent = "offline"; return false; }
+}
+
+// composer
+function grow() { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 132) + "px";
+                  if (!controller) send.disabled = !q.value.trim(); }
+q.addEventListener("input", grow);
+q.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && window.matchMedia("(pointer: fine)").matches) {
+    e.preventDefault(); ask(q.value);
+  }
+});
+$("form").addEventListener("submit", e => { e.preventDefault(); controller ? controller.abort() : ask(q.value); });
+log.addEventListener("pointerdown", e => { if (!e.target.closest("button")) q.blur(); });   // tap closes keyboard
+log.addEventListener("scroll", () => { if (document.activeElement === q) q.blur(); }, {passive: true});
+
+// settings
+function openSheet() {
+  $("url").value = localStorage.getItem(KEY) || (bundled ? "" : location.origin);
+  $("testMsg").textContent = ""; $("testMsg").className = "";
+  $("scrim").classList.add("open"); $("sheet").classList.add("open");
+}
+function closeSheet() { $("scrim").classList.remove("open"); $("sheet").classList.remove("open"); $("url").blur(); }
+$("setBtn").onclick = openSheet;
+$("scrim").onclick = closeSheet;
+$("testBtn").onclick = async () => {
+  const url = normalize($("url").value); $("url").value = url;
+  const m = $("testMsg"); m.className = ""; m.textContent = "Checking…";
+  try {
+    const r = await fetch(url + "/health/ready", {signal: AbortSignal.timeout(15000)});
+    const h = await r.json();
+    m.className = h.ready ? "ok" : "bad";
+    m.textContent = h.ready ? `Connected - ${h.knowledge_base_entries} knowledge entries` : `Reachable, but the model is ${h.detail || "loading"}`;
+  } catch (e) {
+    m.className = "bad";
+    m.textContent = url.startsWith("http://") && !/\/\/(\d+\.){3}\d+|localhost|\.local/.test(url)
+      ? "Use https:// for internet servers." : "Can't connect. Is the server running? Is the URL exact?";
+  }
+};
+$("saveBtn").onclick = () => {
+  const url = normalize($("url").value);
+  if (url) localStorage.setItem(KEY, url); else localStorage.removeItem(KEY);
+  closeSheet(); status();
+};
+$("newBtn").onclick = () => { if (controller) controller.abort(); history = []; save(); renderEmpty(); };
+
+renderAll();
+status().then(ok => { if (!ok && bundled && !localStorage.getItem(KEY)) openSheet(); });
 </script>
 </body>
 </html>
