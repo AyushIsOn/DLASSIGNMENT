@@ -1,0 +1,130 @@
+{
+  "completed": true,
+  "stopped_early_reason": null,
+  "global_step": 3216,
+  "planned_steps": 3216,
+  "epochs_completed": 3.0,
+  "train_runtime_minutes": 62.01,
+  "train_loss": 0.11585856119420701,
+  "tokens_seen": 16941888,
+  "base_model_validation_loss": 3.173027992248535,
+  "best_validation_loss": 0.008888598531484604,
+  "best_checkpoint": "/teamspace/studios/this_studio/acharyagpt/artifacts/run/checkpoints/checkpoint-2800",
+  "validation_curve": [
+    [
+      0,
+      3.173027992248535
+    ],
+    [
+      200,
+      0.3989304304122925
+    ],
+    [
+      400,
+      0.28214165568351746
+    ],
+    [
+      600,
+      0.19310779869556427
+    ],
+    [
+      800,
+      0.13528449833393097
+    ],
+    [
+      1000,
+      0.09922686219215393
+    ],
+    [
+      1200,
+      0.0652739554643631
+    ],
+    [
+      1400,
+      0.04746656492352486
+    ],
+    [
+      1600,
+      0.029392246156930923
+    ],
+    [
+      1800,
+      0.019783172756433487
+    ],
+    [
+      2000,
+      0.014816084876656532
+    ],
+    [
+      2200,
+      0.009851232171058655
+    ],
+    [
+      2400,
+      0.010004469193518162
+    ],
+    [
+      2600,
+      0.009018290787935257
+    ],
+    [
+      2800,
+      0.008888598531484604
+    ],
+    [
+      3000,
+      0.00914275273680687
+    ],
+    [
+      3200,
+      0.009012249298393726
+    ]
+  ],
+  "train_examples": 34274,
+  "validation_examples": 1178,
+  "supervised_tokens_per_epoch": 1029636,
+  "trainable_parameters": 174587904,
+  "device": {
+    "torch": "2.14.1+cu126",
+    "cuda": "12.6",
+    "cuda_available": true,
+    "gpu": "NVIDIA H200",
+    "gpu_memory_gib": 139.8,
+    "bf16": true
+  },
+  "peak_gpu_memory_gib": 36.61,
+  "hyperparameters": {
+    "lora": {
+      "r": 64,
+      "alpha": 128,
+      "dropout": 0.05,
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ]
+    },
+    "train": {
+      "epochs": 3,
+      "learning_rate": 0.0002,
+      "lr_scheduler": "cosine",
+      "warmup_ratio": 0.03,
+      "weight_decay": 0.0,
+      "max_grad_norm": 1.0,
+      "micro_batch_size": 16,
+      "gradient_accumulation": 2,
+      "gradient_checkpointing": true,
+      "eval_every_steps": 200,
+      "logging_steps": 10,
+      "keep_checkpoints": 2,
+      "max_train_minutes": 210,
+      "seed": 3407
+    },
+    "max_seq_len": 1024
+  },
+  "fingerprint": "c4c49952fabd101e"
+}
