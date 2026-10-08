@@ -98,3 +98,16 @@ def test_bm25_ranks_exact_entity_first():
     assert index.search("What is Ardita?", k=1)[0].card.id == "b"
     assert index.search("hello there", k=3) == []
     assert tokenize("What are the symptoms?") == ["symptom"]
+
+
+def test_web_chat_page_is_served():
+    from fastapi.testclient import TestClient
+
+    from acharya.api import create_app
+    from acharya.generation import EchoGenerator
+    from acharya.service import ChatService
+
+    client = TestClient(create_app(ChatService(EchoGenerator())))
+    page = client.get("/")
+    assert page.status_code == 200 and "text/html" in page.headers["content-type"]
+    assert "/v1/chat" in page.text and "AcharyaGPT" in page.text

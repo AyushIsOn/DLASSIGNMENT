@@ -13,7 +13,9 @@ BT="$SDK/build-tools/34.0.0"
 JAR="$SDK/platforms/android-34/android.jar"
 OUT="$HERE/build"
 PY="${PYTHON:-python3}"
-rm -rf "$OUT" && mkdir -p "$OUT/res" "$OUT/classes" "$OUT/dex"
+rm -rf "$OUT" && mkdir -p "$OUT/res" "$OUT/classes" "$OUT/dex" "$OUT/assets"
+# the chat UI: the same page the API serves at GET /
+cp "$HERE/../src/acharya/web/index.html" "$OUT/assets/index.html"
 
 echo "== icon"
 "$PY" - "$HERE/../AcharyaGPT(iOS)/AcharyaGPT(iOS)/Assets.xcassets/acharyaLogoLarge.imageset/Layer 1-2.svg" "$OUT/res" <<'EOF'
@@ -34,8 +36,8 @@ EOF
 echo "== resources + manifest"
 "$BT/aapt2" compile --dir "$OUT/res" -o "$OUT/res.zip"
 "$BT/aapt2" link -o "$OUT/unsigned.apk" -I "$JAR" --manifest "$HERE/AndroidManifest.xml" \
-  --min-sdk-version 24 --target-sdk-version 34 --version-code 1 --version-name 1.0 \
-  "$OUT/res.zip"
+  --min-sdk-version 24 --target-sdk-version 34 --version-code 2 --version-name 2.0 \
+  -A "$OUT/assets" "$OUT/res.zip"
 
 echo "== compile Java -> dex"
 javac --release 11 -classpath "$JAR" -d "$OUT/classes" \
