@@ -35,8 +35,24 @@ fi
 source scripts/_env.sh
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 started=$(date +%s)
+# GPU budget: the whole run (setup + training + evaluation + merge) must fit in
+# ACHARYA_GPU_MINUTES. Training stops early if needed and keeps EVAL_RESERVE minutes for the rest.
+GPU_MINUTES="${ACHARYA_GPU_MINUTES:-105}"
+EVAL_RESERVE="${ACHARYA_EVAL_RESERVE_MINUTES:-30}"
+export ACHARYA_TRAIN_DEADLINE=$(( started + (GPU_MINUTES - EVAL_RESERVE) * 60 ))
+stop_studio() {  # ACHARYA_STOP_WHEN_DONE=1: stop the Studio (and the GPU bill) when finished
+  [[ "${ACHARYA_STOP_WHEN_DONE:-0}" == "1" ]] || return 0
+  echo "Stopping this Studio in 60 s to save credits (everything is on its persistent disk)."
+  sleep 60
+  for py in python3 python /opt/conda/bin/python; do
+    if command -v "$py" >/dev/null && "$py" -c "from lightning_sdk import Studio; Studio().stop()" 2>/dev/null; then
+      return 0
+    fi
+  done
+  echo "Could not stop the Studio automatically - STOP IT NOW in the Lightning UI."
+}
 stage() { echo; echo "================ [$(date +%H:%M:%S)] $* ================"; }
-trap 'echo; echo "RUN FAILED at line $LINENO - see the error above. Fix it and re-run: bash scripts/lightning_gpu_run.sh"; rm -f "$PIDFILE"; echo PROGRESS_EXIT 1' ERR
+trap 'echo; echo "RUN FAILED at line $LINENO - see the error above. Fix it and re-run: bash scripts/lightning_gpu_run.sh"; rm -f "$PIDFILE"; echo PROGRESS_EXIT 1; stop_studio' ERR
 
 stage "0/5 environment"
 "$UV" sync --frozen --extra train --extra data --group dev
@@ -50,6 +66,7 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # everything needed is on disk 
 RUN_DIR="$(run_py -c 'from finetune.common import Config; print(Config.load().output_dir)')"
 MODEL="$(run_py -c 'from finetune.common import Config; print(Config.load().raw["base_model"]["repository"])')"
 echo "config: ${ACHARYA_CONFIG:-configs/train.yaml} | model: $MODEL | run dir: $RUN_DIR"
+echo "GPU budget: ${GPU_MINUTES} min in total; training ends by $(date -d @"$ACHARYA_TRAIN_DEADLINE" +%H:%M) at the latest"
 
 stage "1/5 preflight (GPU, CUDA, bf16, disk, model, dataset, time budget)"
 run_py -m finetune.preflight   # stops here with a clear message if anything is wrong
@@ -92,3 +109,4 @@ Switch to CPU BEFORE exporting the GGUF (it needs no GPU).
 EOF
 rm -f "$PIDFILE"
 echo PROGRESS_EXIT 0
+stop_studio
