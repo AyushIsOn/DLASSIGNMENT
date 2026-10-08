@@ -8,8 +8,11 @@ unset UV_LIGHTNING_VIRTUALENV_ROOT
 export UV_PROJECT_ENVIRONMENT="$ROOT/.venv"
 export UV_LINK_MODE=copy
 
-if command -v uv >/dev/null 2>&1; then
-  UV="$(command -v uv)"
+# `command -v` can return an alias/function text (Lightning's zsh aliases uv to a conda
+# wrapper), so only accept a real executable file.
+UV="$(command -v uv 2>/dev/null || true)"
+if [[ -n "$UV" && -f "$UV" && -x "$UV" ]]; then
+  :
 elif [[ -x "$HOME/.local/bin/uv" ]]; then
   UV="$HOME/.local/bin/uv"
 else
