@@ -215,7 +215,8 @@ def main() -> None:
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() * 1.03,
-            f"perplexity {losses[model_key]['perplexity']:.2f}\nloss {losses[model_key]['loss']:.3f}",
+            f"perplexity {losses[model_key]['perplexity']:.2f}\n"
+            f"loss {losses[model_key]['loss']:.3f}",
             ha="center",
             va="bottom",
             fontsize=10,
