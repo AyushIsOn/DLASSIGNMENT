@@ -176,6 +176,26 @@ def build(config: Config) -> dict[str, Any]:
 
     import matplotlib.pyplot as plt
 
+    # improvement (fine-tuned minus base) per test group, from the same results
+    deltas = [100 * (results["groups"][g]["finetuned"]["accuracy"]
+                     - results["groups"][g]["base"]["accuracy"]) for g in groups]
+    fig, ax = plt.subplots(figsize=(max(8, 1.3 * len(groups)), 4.5))
+    bars = ax.barh([short[g].replace("\n", " ") for g in groups], deltas,
+                   color=[COLORS["finetuned"] if d >= 0 else "#dc2626" for d in deltas])
+    for bar, d in zip(bars, deltas, strict=True):
+        ax.text(bar.get_width() + (1 if d >= 0 else -1), bar.get_y() + bar.get_height() / 2,
+                f"{d:+.1f} pts", va="center", ha="left" if d >= 0 else "right", fontsize=9)
+    ax.axvline(0, color="#475569", lw=1)
+    ax.invert_yaxis()
+    ax.set_xlabel("accuracy change from fine-tuning (percentage points)")
+    ax.set_title("What fine-tuning changed, per test group")
+    ax.grid(axis="x", alpha=0.3)
+    span = max(5.0, *(abs(d) for d in deltas))
+    ax.set_xlim(min(0, min(deltas)) - 0.2 * span, max(0, max(deltas)) + 0.25 * span)
+    fig.tight_layout()
+    fig.savefig(out / "improvement_by_group.png", dpi=150)
+    plt.close(fig)
+
     losses = results["test_answer_loss"]
     fig, ax = plt.subplots(figsize=(5, 4))
     bars = ax.bar([LABELS[m] for m in ("base", "finetuned")],
@@ -243,6 +263,7 @@ def build(config: Config) -> dict[str, Any]:
                 f"[{pct(lo_f)}-{pct(hi_f)}] | {item['only_finetuned_correct']} / "
                 f"{item['only_base_correct']} | {shown_p} |")
     lines += ["", "![accuracy by group](accuracy_by_group.png)", "",
+              "![improvement by group](improvement_by_group.png)", "",
               "## Knowledge recall by question type", "",
               "| Question type | n | Base | Fine-tuned |", "|---|---:|---:|---:|"]
     for a in attrs:

@@ -6,6 +6,10 @@ with a small BM25 retrieval layer, served to a **SwiftUI iOS app**. Based on
 [danushkhanna/AcharyaGPT](https://github.com/danushkhanna/AcharyaGPT) (a LangChain + OpenAI
 RAG demo over one PDF). Educational only - not medical advice.
 
+![AcharyaGPT pipeline](docs/pipeline_flow.png)
+
+(Diagram source: `scripts/make_flow_diagram.py`.)
+
 ## Why the previous training showed no improvement
 
 | Problem in the old code | Fix |
@@ -132,7 +136,8 @@ src/acharya/   prompting (shared prompt), retrieval (BM25), safety, generation
                (transformers / Ollama), service, api (FastAPI), cli
 scripts/       lightning_cpu_setup.sh, lightning_gpu_run.sh, restore_and_resume.sh,
                lightning_serve.sh, export_gguf.sh, mac_serve.sh, ios_device_run.sh
-data/          sft/ (train/validation/test .jsonl.gz), kb/cards.jsonl, raw/namaste/,
+docs/          pipeline_flow.png
+data/          (see data/README.md) sft/ (train/validation/test .jsonl.gz), kb/cards.jsonl, raw/namaste/,
                curated/, dataset V1.0.pdf; db/acharya.sqlite is built, not committed
 AcharyaGPT(iOS)/  SwiftUI app + tests
 ```

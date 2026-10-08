@@ -32,3 +32,5 @@ data/db/
 # Android build outputs (the signed APK itself is committed)
 android/build/
 *.keystore
+# Xcode per-user state
+*.xcuserstate

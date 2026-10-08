@@ -24,6 +24,7 @@ struct ChatbotView: View {
                         IntroductionView()
                         if chatViewModel.chatMessages.isEmpty && chatViewModel.pendingMessage == nil {
                             SuggestionsView { suggestion in
+                                isFocused = false
                                 chatViewModel.message = suggestion
                                 chatViewModel.sendMessage()
                             }
@@ -38,7 +39,9 @@ struct ChatbotView: View {
                         Color.clear.frame(height: 130).id("bottom")
                     }
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .scrollDismissesKeyboard(.immediately)
+                // tapping anywhere in the conversation closes the keyboard
+                .simultaneousGesture(TapGesture().onEnded { isFocused = false })
                 .onChange(of: chatViewModel.chatMessages) { _, messages in
                     guard !messages.isEmpty else { return }
                     withAnimation { proxy.scrollTo("bottom") }
@@ -146,6 +149,12 @@ struct ChatbotView: View {
             HStack(alignment: .bottom) {
                 TextField("What's your query?", text: $chatViewModel.message, axis: .vertical)
                     .focused($isFocused)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") { isFocused = false }
+                        }
+                    }
                     .lineLimit(1...6)
                     .padding(16)
                     .background(Color.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 14))
