@@ -25,3 +25,6 @@ logs/
 .idea/
 .vscode/
 xcuserdata/
+
+# Built by finetune.build_dataset (87 MB; rebuilt on the CPU Studio)
+data/db/

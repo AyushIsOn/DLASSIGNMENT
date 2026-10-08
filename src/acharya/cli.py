@@ -16,7 +16,13 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+
+def config_paths() -> tuple[Path, Path]:
+    """(base model dir, adapter dir) from configs/train.yaml (or ACHARYA_CONFIG)."""
+    from finetune.common import Config
+
+    config = Config.load()
+    return config.model_dir, config.adapter_dir
 
 
 def build_generator(args: argparse.Namespace):  # type: ignore[no-untyped-def]
@@ -26,8 +32,9 @@ def build_generator(args: argparse.Namespace):  # type: ignore[no-untyped-def]
         return OllamaGenerator(args.model or "acharyagpt", args.ollama_url)
     if args.backend == "echo":
         return EchoGenerator()
-    model_dir = Path(args.model_dir).expanduser().resolve()
-    adapter = None if args.no_adapter else Path(args.adapter).expanduser().resolve()
+    defaults = config_paths()
+    model_dir = Path(args.model_dir or defaults[0]).expanduser().resolve()
+    adapter = None if args.no_adapter else Path(args.adapter or defaults[1]).expanduser().resolve()
     if adapter is not None and not (adapter / "adapter_config.json").is_file():
         raise SystemExit(f"No adapter at {adapter}. Train first, or pass --no-adapter to "
                          "serve the base model.")
@@ -44,8 +51,8 @@ def parser() -> argparse.ArgumentParser:
         command = commands.add_parser(name)
         command.add_argument("--backend", choices=("transformers", "ollama", "echo"),
                              default="transformers")
-        command.add_argument("--model-dir", default=str(ROOT / "artifacts/models/Qwen3-8B"))
-        command.add_argument("--adapter", default=str(ROOT / "artifacts/run/adapter"))
+        command.add_argument("--model-dir", help="default: base model of configs/train.yaml")
+        command.add_argument("--adapter", help="default: <output_dir>/adapter of the config")
         command.add_argument("--no-adapter", action="store_true", help="serve the base model")
         command.add_argument("--model", help="Ollama model name (default: acharyagpt)")
         command.add_argument("--ollama-url", default="http://127.0.0.1:11434")

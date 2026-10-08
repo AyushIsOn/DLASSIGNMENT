@@ -1,0 +1,48 @@
+# AcharyaGPT round 2 fallback: Qwen3-8B (round 1's base model) on the round-2 data.
+# ~2x faster than 14B and a ~5 GB GGUF for an 8 GB Mac. Use with:
+#   export ACHARYA_CONFIG=configs/train_8b.yaml
+base_model:
+  repository: Qwen/Qwen3-8B            # Apache-2.0, post-trained chat model (thinking disabled)
+  revision: b968826d9c46dd6066d109eabc6255188de91218
+  local_dir: artifacts/models/Qwen3-8B
+  shards:
+    model-00001-of-00005.safetensors: 31d6a825ae35f11fb85b195b4c42c146c051e446433125a215336abdf95cbf5f
+    model-00002-of-00005.safetensors: 5991236cea6fe21f3d43cab0f0e84448734fbbe0789816202989f2ddc9d18282
+    model-00003-of-00005.safetensors: c5185c4794be2d8a9784d5753c9922db38df478ce11f9ed0b415b7304d896836
+    model-00004-of-00005.safetensors: b5ee7de71fbf17db3d5704e0c8f2bc7d005ca9e1d7ca2aeb19827b0cfcaa917a
+    model-00005-of-00005.safetensors: 20c2d6366ab85c90786ccdd829cd2b9e7d30ef3b2ebbb998280e7e4014b542ff
+
+data_dir: data/sft
+output_dir: artifacts/run2-8b
+max_seq_len: 1536                       # longest example is 1,316 tokens; nothing is truncated
+
+lora:
+  r: 64
+  alpha: 128
+  dropout: 0.0                          # no dropout: saves an activation copy per layer
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+train:
+  epochs: 2                             # 88k rows x 2 = ~29M tokens; round 1's 3 epochs memorised
+  learning_rate: 2.0e-4
+  lr_scheduler: cosine
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  max_tokens_per_batch: 24576           # padded tokens per micro-batch (~150 examples)
+  gradient_accumulation: 1              # ~24k tokens per optimizer step, ~600 steps per epoch
+  gradient_checkpointing: auto          # off unless the memory probe on the worst batch needs it
+  max_memory_fraction: 0.88             # probe peak (+ optimizer state) must stay below this
+  dataloader_workers: 4
+  eval_every_steps: 100                 # validation loss + best-model checkpoint
+  eval_batch_size: 32
+  save_every_minutes: 10                # extra time-based resume points between evaluations
+  logging_steps: 10
+  keep_checkpoints: 2                   # + the best one, which Trainer never deletes
+  max_train_minutes: 90                 # hard stop that still leaves time for evaluation
+  seed: 3407
+
+evaluation:
+  batch_size: 96
+  max_new_tokens: 256
+  loss_batch_size: 32

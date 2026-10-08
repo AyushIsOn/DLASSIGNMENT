@@ -1,8 +1,8 @@
-"""End-to-end pipeline smoke test on CPU (≈2 min, no GPU, no 8B weights in RAM).
+"""End-to-end pipeline smoke test on CPU (≈2 min, no GPU, no 14B weights in RAM).
 
     python -m finetune.smoke
 
-Builds a tiny random Qwen3 model with the REAL Qwen3-8B tokenizer and chat template,
+Builds a tiny random Qwen3 model with the REAL Qwen3 tokenizer and chat template,
 then runs the same train -> evaluate -> report -> merge code the GPU run uses.
 It proves the environment works; the scores it prints are meaningless.
 """
@@ -10,6 +10,7 @@ It proves the environment works; the scores it prints are meaningless.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -45,11 +46,13 @@ def run() -> None:
     if (work / "run").exists():
         shutil.rmtree(work / "run")
     model_dir = tiny_model(base.model_dir, work / "tiny-qwen3")
+    os.environ.pop("ACHARYA_BASE_MODEL_DIR", None)  # only meant for the tokenizer above
     raw = json.loads(json.dumps(base.raw))
     raw["base_model"].update(local_dir=str(model_dir), shards={"model.safetensors": "-"})
     raw["output_dir"] = str(work / "run")
-    raw["train"].update(micro_batch_size=4, gradient_accumulation=1, eval_every_steps=2,
-                        logging_steps=1, keep_checkpoints=1)
+    raw["train"].update(max_tokens_per_batch=2048, gradient_accumulation=1, eval_every_steps=2,
+                        logging_steps=1, keep_checkpoints=1, eval_batch_size=4,
+                        gradient_checkpointing=False)
     raw["evaluation"].update(batch_size=8, max_new_tokens=8, loss_batch_size=4)
     (work / "config.yaml").write_text(yaml.safe_dump(raw))
     config = Config(raw)

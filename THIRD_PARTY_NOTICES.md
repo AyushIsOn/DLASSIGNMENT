@@ -2,6 +2,13 @@
 
 ## Data
 
+- **NAMASTE portal**, Ministry of Ayush, Government of India
+  (https://namaste.ayush.gov.in/): *National Ayurveda Morbidity Codes* and *Standardised
+  Ayurveda Terminology*. The two Excel files in `data/raw/namaste/` are unmodified copies
+  of the portal's public downloads. They are converted into question/answer pairs and
+  knowledge-base cards, attributed to the Ministry of Ayush, for non-commercial
+  educational use. The portal publishes no explicit open licence. Check its terms (or
+  data.gov.in's Government Open Data License - India) before redistributing commercially.
 - [Ayurvedic Knowledge Dataset](https://www.kaggle.com/datasets/akashkumarpr/ayurvedic-knowledge-dataset),
   Akash Kumar, version 1, CC BY 4.0 as stated by the uploader. Rows are converted into
   question/answer pairs and knowledge-base cards (`data/sft/`, `data/kb/`).
@@ -15,8 +22,9 @@ Community labels in these datasets have not been clinically verified.
 
 ## Model and tools
 
-- [Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B), Apache-2.0, by the Qwen team (Alibaba).
-  The fine-tuned adapter and merged model are derivatives of it.
+- [Qwen3-14B](https://huggingface.co/Qwen/Qwen3-14B) and
+  [Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B), Apache-2.0, by the Qwen team (Alibaba).
+  The fine-tuned adapters and merged models are derivatives of them.
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT) is downloaded by
   `scripts/export_gguf.sh` to produce the GGUF file; [Ollama](https://ollama.com) (MIT)
   serves it on a Mac; [cloudflared](https://github.com/cloudflare/cloudflared)

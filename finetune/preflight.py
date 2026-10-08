@@ -49,9 +49,19 @@ def check(config: Config, require_gpu: bool = True) -> dict[str, object]:
     free_gib = shutil.disk_usage(config.output_dir.parent if config.output_dir.parent.exists()
                                  else Path.cwd()).free / 2**30
     info["free_disk_gib"] = round(free_gib, 1)
-    if free_gib < 25:
-        problems.append(f"only {free_gib:.0f} GiB free disk; need >= 25 GiB for checkpoints, "
-                        "evaluation and the merged model")
+    model_gib = sum((config.model_dir / name).stat().st_size for name in
+                    config.raw["base_model"]["shards"] if (config.model_dir / name).is_file()
+                    ) / 2**30
+    # checkpoints (3 kept, ~3 GB each for 14B r=64) + recovery tar + evaluation
+    need_training = 12 + 0.6 * model_gib
+    info["needed_disk_gib"] = {"training": round(need_training), "merge": round(model_gib + 2)}
+    if free_gib < need_training:
+        problems.append(f"only {free_gib:.0f} GiB free disk; training needs >= "
+                        f"{need_training:.0f} GiB (checkpoints + recovery archive). Delete "
+                        "round-1 leftovers, e.g. rm -rf artifacts/run/merged artifacts/gguf")
+    elif free_gib < need_training + model_gib + 2:
+        info["warning"] = (f"enough disk to train and evaluate, but the merged model needs "
+                           f"~{model_gib + 2:.0f} GiB more")
     if not verified(config.model_dir, config):
         problems.append(f"base model in {config.model_dir} is missing or unverified: run "
                         "`bash scripts/lightning_cpu_setup.sh` (on CPU) first")

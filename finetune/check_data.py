@@ -22,7 +22,7 @@ from finetune.data import (
     encode,
     prompt_messages,
     prompt_text,
-    read_jsonl,
+    read_split,
     verify_manifest,
 )
 
@@ -37,7 +37,7 @@ def check(tokenizer_path: Path, data_dir: Path, max_seq_len: int) -> dict[str, o
     end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
     report: dict[str, object] = {"tokenizer": str(tokenizer_path), "max_seq_len": max_seq_len}
     for split in ("train", "validation", "test"):
-        rows = read_jsonl(data_dir / f"{split}.jsonl")
+        rows = read_split(data_dir, split)
         lengths, answers, too_long = [], [], 0
         for row in rows:
             official = tokenizer.apply_chat_template(
@@ -85,8 +85,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--tokenizer", type=Path, required=True)
     parser.add_argument("--data", type=Path, default=ROOT / "data/sft")
-    parser.add_argument("--max-seq-len", type=int, default=1024)
+    parser.add_argument("--max-seq-len", type=int, default=None,
+                        help="default: max_seq_len from configs/train.yaml")
     args = parser.parse_args()
+    if args.max_seq_len is None:
+        from finetune.common import Config
+
+        args.max_seq_len = int(Config.load().raw["max_seq_len"])
     print(json.dumps(check(args.tokenizer, args.data, args.max_seq_len), indent=2))
     print("DATA CHECK PASSED")
 

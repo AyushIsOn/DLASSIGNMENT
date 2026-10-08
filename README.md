@@ -1,6 +1,7 @@
 # AcharyaGPT
 
-An Ayurveda assistant: **Qwen3-8B fine-tuned with LoRA** on Ayurvedic knowledge tables,
+An Ayurveda assistant: **Qwen3-14B fine-tuned with LoRA** on the Ministry of Ayush NAMASTE
+terminology and Ayurvedic knowledge tables,
 with a small BM25 retrieval layer, served to a **SwiftUI iOS app**. Based on
 [danushkhanna/AcharyaGPT](https://github.com/danushkhanna/AcharyaGPT) (a LangChain + OpenAI
 RAG demo over one PDF). Educational only - not medical advice.
@@ -21,48 +22,60 @@ The old 10k-line pipeline was removed; it is still in the git history (commit `9
 
 Everything that does not need a GPU runs first on a CPU Studio. Every script can be
 re-run safely: finished steps are skipped and training resumes from its last checkpoint.
+Round-1 results in `artifacts/run/` are left untouched; round 2 writes to `artifacts/run2/`.
 
-**1. CPU Studio (free) - about 20 minutes**
+**1. CPU Studio (free) - about 30 minutes**
 
 ```bash
-git clone https://github.com/AyushIsOn/DLASSIGNMENT.git && cd DLASSIGNMENT
+cd /teamspace/studios/this_studio/acharyagpt      # round-1 checkout (new account: git clone it)
+git fetch origin && git checkout kiro/round2-namaste-14b && git pull
 bash scripts/lightning_cpu_setup.sh
 ```
 
-Installs the locked environment, downloads Qwen3-8B (16.4 GB) and checks every shard's
-SHA-256, verifies the dataset and the prompt/label masking with the real tokenizer, runs
-the unit tests and a full train → evaluate → report → merge pass on a tiny model. It must
-end with `CPU SETUP COMPLETE`.
+This script:
+- installs the locked environment;
+- downloads Qwen3-14B (29.5 GB) and checks every shard's SHA-256;
+- verifies the dataset and the prompt/label masking with the real tokenizer;
+- builds the SQLite database;
+- runs the unit tests and a full train → evaluate → report → merge pass on a tiny model.
 
-**2. Switch the same Studio to 1× H200, then - about 1.5-2 hours**
+It must end with `CPU SETUP COMPLETE`.
 
-```bash
-cd DLASSIGNMENT && bash scripts/lightning_gpu_run.sh
-```
-
-GPU preflight → LoRA training (prints an ETA after 20 steps) → base vs fine-tuned
-evaluation → report → merged model → GGUF file for the Mac. It runs in its own background
-session: closing the tab or pressing Ctrl+C only stops the log view; run the same command
-again to re-attach. If the Studio stops, start it on the H200 again and re-run - nothing
-finished is repeated. Training has a hard 3.5-hour limit so the whole run fits in the
-5-hour budget even in the worst case. Make sure the Studio's auto-sleep cannot stop it
-during the run. It ends with `ALL DONE`.
-
-Results: `artifacts/run/report/REPORT.md` with loss curves and accuracy charts.
-
-**3. (Optional) demo the app straight from the GPU**
+**2. Switch the same Studio to 1× H200 - about 2-2.5 hours**
 
 ```bash
-bash scripts/lightning_serve.sh     # prints https://<random>.trycloudflare.com
+cd /teamspace/studios/this_studio/acharyagpt && bash scripts/lightning_gpu_run.sh
 ```
 
-Paste that URL into the app (gear icon). It works while the script runs.
+The steps are: preflight, memory probe, LoRA training, base vs fine-tuned evaluation, report,
+then the merged model. Training prints an ETA after 20 steps and has a hard limit of
+`max_train_minutes` (115).
 
-**4. Download the results, then stop the Studio (or switch it back to CPU)**
+The run is in its own background session, so closing the tab or pressing Ctrl+C only stops
+the log view. Run the same command again to re-attach.
 
-`artifacts/gguf/` (≈5 GB Q4_K_M + Modelfile, for the Mac), `artifacts/run/report/` and
-`artifacts/run/adapter/`. If the GGUF step reported `FAILED`, run
-`bash scripts/export_gguf.sh` on the CPU machine - it needs no GPU.
+**Checkpoints and moving to another account.** A resume point is saved every ~10 minutes,
+and `artifacts/run2/recovery/recovery-latest.tar` holds a portable copy (~6 GB). To continue
+on another Lightning account:
+1. Clone the same branch there.
+2. Run step 1.
+3. Upload the tar (Studio file browser).
+4. Run `bash scripts/restore_and_resume.sh recovery-latest.tar`.
+5. Run step 2.
+
+Alternatively, set `ACHARYA_HUB_REPO=<you>/acharya-recovery` and `HF_TOKEN` before step 2.
+Every archive is then also uploaded to that private Hugging Face repo, and the new account
+uses `restore_and_resume.sh hub`.
+
+**8B instead of 14B** (faster; ~5 GB GGUF for a Mac with 8 GB RAM): prefix both commands
+with `ACHARYA_CONFIG=configs/train_8b.yaml`.
+
+**3. (Optional) demo the app straight from the GPU:** `bash scripts/lightning_serve.sh`
+prints an `https://….trycloudflare.com` URL; paste it into the app (gear icon).
+
+**4. Download the results, then switch to CPU.** `artifacts/run2/results-bundle.tar`
+contains the adapter, report and evaluation. On CPU, run `bash scripts/export_gguf.sh` to
+get `artifacts/gguf/` (Q4_K_M: ~9 GB for 14B; the Mac needs 16 GB RAM).
 
 ## Run the app on a Mac (no GPU needed)
 
@@ -83,34 +96,44 @@ curl -s localhost:8000/v1/chat -H 'Content-Type: application/json' \
 
 ## What is trained and how it is evaluated
 
-* **Model:** Qwen/Qwen3-8B (pinned revision, thinking disabled), bf16 LoRA r=64/α=128 on
-  all attention and MLP projections (175M trainable parameters), lr 2e-4 cosine, 3 epochs,
-  effective batch 32, gradient checkpointing. Loss on answer tokens only. `configs/train.yaml`.
-* **Data:** 34k training conversations from two Kaggle Ayurveda tables (~1,340 conditions),
-  the original PDF's Q&A, 59 hand-written concepts and safety examples - see
-  [DATASET_CARD.md](DATASET_CARD.md).
-* **Test set (1,918 questions, never trained on):**
-  *knowledge recall* - facts from training asked with question wordings never used in
-  training; *unseen conditions + RAG* - conditions excluded from training, with the BM25
-  entries in the prompt (as the app does); *concepts*, *safety*; and a *control* with unseen
-  conditions and no retrieval. The base model and the fine-tuned model are the same weights
-  with the adapter off/on and get identical prompts. Scoring (`finetune/metrics.py`) checks
-  the stated fact - dosha set, modern equivalent, prognosis class, classical text, share of
-  listed symptoms - not the wording; test-set perplexity is reported as well.
-* **Serving:** safety rules first (emergencies, self-harm and dose requests get fixed
-  replies, generated doses are removed), then BM25 top-3 entries if the match is
-  confident, then the model. Same prompt format as training (`src/acharya/prompting.py`).
+* **Model:** Qwen/Qwen3-14B (pinned revision, thinking disabled).
+  - bf16 LoRA r=64/α=128 on all attention and MLP projections.
+  - lr 1.5e-4 cosine, 2 epochs; loss on answer tokens only.
+  - `configs/train.yaml`.
+* **GPU efficiency:** round 1 ran at ~40% GPU utilization. Round 2 changes:
+  - token-budget batches of ~16k tokens with <5% padding;
+  - no gradient checkpointing unless a memory probe on the worst batch needs it;
+  - fused AdamW, LoRA dropout off, background data workers;
+  - tokens/s logged in `metrics.jsonl`.
+* **Data:** 88k training conversations about ~15,900 NAMASTE terms and Kaggle conditions,
+  plus concepts and safety examples; see [DATASET_CARD.md](DATASET_CARD.md).
+* **Test set (2,242 questions).** The headline is **generalization**: questions about
+  conditions or terms never trained on.
+  - *Unseen + RAG*: answered from retrieved entries.
+  - *Unseen terms*: infer what a never-seen Sanskrit term means from word parts learned
+    on other terms. Terms that appear anywhere in training are removed.
+
+  Also reported: knowledge recall with new wordings, concepts, safety, and an unknowable
+  control. The base and fine-tuned models are the same weights with the adapter off/on and
+  get identical prompts. Scoring (`finetune/metrics.py`) checks the stated fact, not the
+  wording, and echoing the question's term earns nothing.
+* **Serving:**
+  1. Safety rules first: emergencies, self-harm and dose requests get fixed replies, and
+     generated doses are removed.
+  2. BM25 top-3 entries, if the match is confident.
+  3. The model, with the same prompt format as training (`src/acharya/prompting.py`).
 
 ## Repository
 
 ```
-finetune/      build_dataset, check_data, download_model, preflight, train, evaluate,
-               metrics, report, export, smoke
+finetune/      build_dataset, namaste, database, check_data, download_model, preflight,
+               train, recovery, evaluate, metrics, report, export, smoke
 src/acharya/   prompting (shared prompt), retrieval (BM25), safety, generation
                (transformers / Ollama), service, api (FastAPI), cli
-scripts/       lightning_cpu_setup.sh, lightning_gpu_run.sh, lightning_serve.sh,
-               export_gguf.sh, mac_serve.sh
-data/          sft/ (train/validation/test JSONL), kb/cards.jsonl, curated/, dataset V1.0.pdf
+scripts/       lightning_cpu_setup.sh, lightning_gpu_run.sh, restore_and_resume.sh,
+               lightning_serve.sh, export_gguf.sh, mac_serve.sh, ios_device_run.sh
+data/          sft/ (train/validation/test .jsonl.gz), kb/cards.jsonl, raw/namaste/,
+               curated/, dataset V1.0.pdf; db/acharya.sqlite is built, not committed
 AcharyaGPT(iOS)/  SwiftUI app + tests
 ```
 

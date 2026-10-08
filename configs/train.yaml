@@ -1,43 +1,52 @@
-# AcharyaGPT fine-tuning configuration (one H200 141 GB; also fits an 80 GB A100/H100).
+# AcharyaGPT round 2: Qwen3-14B LoRA on one H200 (141 GB). Also fits an 80 GB H100/A100
+# (the memory probe then turns on gradient checkpointing or halves the batch by itself).
+# Fallback for less GPU time / a smaller Mac: ACHARYA_CONFIG=configs/train_8b.yaml
 base_model:
-  repository: Qwen/Qwen3-8B            # Apache-2.0, post-trained chat model (thinking disabled)
-  revision: b968826d9c46dd6066d109eabc6255188de91218
-  local_dir: artifacts/models/Qwen3-8B
-  # sha256 of every weight shard, verified on CPU before any GPU time is spent
+  repository: Qwen/Qwen3-14B           # Apache-2.0; same tokenizer + chat template as Qwen3-8B
+  revision: 40c069824f4251a91eefaf281ebe4c544efd3e18
+  local_dir: artifacts/models/Qwen3-14B
+  # sha256 of every weight shard (from the Hub), verified on CPU before any GPU time is spent
   shards:
-    model-00001-of-00005.safetensors: 31d6a825ae35f11fb85b195b4c42c146c051e446433125a215336abdf95cbf5f
-    model-00002-of-00005.safetensors: 5991236cea6fe21f3d43cab0f0e84448734fbbe0789816202989f2ddc9d18282
-    model-00003-of-00005.safetensors: c5185c4794be2d8a9784d5753c9922db38df478ce11f9ed0b415b7304d896836
-    model-00004-of-00005.safetensors: b5ee7de71fbf17db3d5704e0c8f2bc7d005ca9e1d7ca2aeb19827b0cfcaa917a
-    model-00005-of-00005.safetensors: 20c2d6366ab85c90786ccdd829cd2b9e7d30ef3b2ebbb998280e7e4014b542ff
+    model-00001-of-00008.safetensors: e942bdbdf08857d16a8fef7d1dae9fceabeb4e84def6043485fe2f6f085dab0e
+    model-00002-of-00008.safetensors: f7c9c6eee628f5ad831d2d1d292e120505e5fcadeb38f88b4d3c4cb86306ccf9
+    model-00003-of-00008.safetensors: dfb8c5df9404b41ad6ae74e8b6b367135f017b4467b884cf71b17c71954f18a9
+    model-00004-of-00008.safetensors: eab286fec759e3e59ab228621aefa0fef14ed56039e06f959e67257d5af7604d
+    model-00005-of-00008.safetensors: 97f0dc2992e59da95c466eff6f4fd0c8335843bbc36ed5c913a6f5150748c0e6
+    model-00006-of-00008.safetensors: 9e8e76a013cd5e253865b792991e0b410f869b136b3c500079b531b09198e99e
+    model-00007-of-00008.safetensors: 0aee70ee6e91dc00d818804fb47f124d13ee4ad5b4a64553e09dbf9391cd5750
+    model-00008-of-00008.safetensors: 0d6b92296e326d39bbbaeb32c3ec454ac606da843d4c8ffa8edf010b62b8c9e0
 
 data_dir: data/sft
-output_dir: artifacts/run
-max_seq_len: 1024                       # longest example is 812 tokens; nothing is truncated
+output_dir: artifacts/run2                # round 1 stays untouched in artifacts/run
+max_seq_len: 1536                       # longest example is 1,316 tokens; nothing is truncated
 
 lora:
   r: 64
   alpha: 128
-  dropout: 0.05
+  dropout: 0.0                          # no dropout: saves an activation copy per layer
   target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
 
 train:
-  epochs: 3                             # ~3,200 optimizer steps; ~16M tokens in total
-  learning_rate: 2.0e-4
+  epochs: 2                             # 88k rows x 2 = ~29M tokens; round 1's 3 epochs memorised
+  learning_rate: 1.5e-4
   lr_scheduler: cosine
   warmup_ratio: 0.03
   weight_decay: 0.0
   max_grad_norm: 1.0
-  micro_batch_size: 16
-  gradient_accumulation: 2              # effective batch = 32 sequences
-  gradient_checkpointing: true          # keeps peak memory ~50 GB even for the longest batch
-  eval_every_steps: 200
+  max_tokens_per_batch: 16384           # per optimizer step; the probe may split it in 2 micro-batches
+  gradient_accumulation: 1              # ~16k tokens per optimizer step, ~900 steps per epoch
+  gradient_checkpointing: auto          # off unless the memory probe on the worst batch needs it
+  max_memory_fraction: 0.88             # probe peak (+ optimizer state) must stay below this
+  dataloader_workers: 4
+  eval_every_steps: 200                 # validation loss + best-model checkpoint (~1 min each)
+  eval_batch_size: 32
+  save_every_minutes: 10                # extra time-based resume points between evaluations
   logging_steps: 10
-  keep_checkpoints: 2
-  max_train_minutes: 210                # hard stop (checkpoint + best adapter kept) if ever reached
+  keep_checkpoints: 2                   # + the best one, which Trainer never deletes
+  max_train_minutes: 115                # hard stop that still leaves time for evaluation
   seed: 3407
 
 evaluation:
-  batch_size: 64
+  batch_size: 96
   max_new_tokens: 256
-  loss_batch_size: 16
+  loss_batch_size: 32

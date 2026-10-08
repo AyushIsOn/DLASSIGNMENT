@@ -1,6 +1,6 @@
-"""Merge the LoRA adapter into Qwen3-8B and save a standalone bf16 model.
+"""Merge the LoRA adapter into the base model and save a standalone bf16 model.
 
-    python -m finetune.export            # -> artifacts/run/merged (~16 GB)
+    python -m finetune.export            # -> <output_dir>/merged (~30 GB for 14B)
 
 The merged folder is what llama.cpp converts to GGUF for Ollama on a Mac
 (scripts/export_gguf.sh). Merging runs fine on the GPU (seconds) or CPU (minutes).

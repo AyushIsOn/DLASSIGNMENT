@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Convert the fine-tuned model to GGUF (Q4_K_M, ~5 GB) for Ollama on a Mac.
+# Convert the fine-tuned model to GGUF (Q4_K_M: ~9 GB for 14B, ~5 GB for 8B) for Ollama on a Mac.
 # CPU only - run it on the Lightning CPU machine AFTER switching away from the GPU.
 #
-#   bash scripts/export_gguf.sh            # needs artifacts/run/adapter
+#   bash scripts/export_gguf.sh            # needs <output_dir>/adapter from configs/train.yaml
 #
 # Output: artifacts/gguf/acharyagpt-q4_k_m.gguf + artifacts/gguf/Modelfile
 set -euo pipefail
@@ -11,9 +11,10 @@ cd "$ROOT"
 source scripts/_env.sh
 
 LLAMA_TAG="b11450"                       # pinned llama.cpp build (Oct 2026)
-QUANT="${QUANT:-Q4_K_M}"                  # Q8_0 (~8.7 GB) is closer to bf16 if the Mac has RAM
+QUANT="${QUANT:-Q4_K_M}"                  # Q8_0 (~15 GB for 14B) is closer to bf16 if the Mac has RAM
 TOOLS="$ROOT/artifacts/tools/llama.cpp-$LLAMA_TAG"
 MERGED="$(run_py -c 'from finetune.common import Config; print(Config.load().output_dir / "merged")')"
+MODEL_GIB="$(run_py -c 'from finetune.common import Config; c = Config.load(); print(1 + int(sum((c.model_dir / n).stat().st_size for n in c.raw["base_model"]["shards"]) / 2**30))')"
 OUT="${ACHARYA_GGUF_DIR:-$ROOT/artifacts/gguf}"
 F16="$OUT/acharyagpt-f16.gguf"
 FINAL="$OUT/acharyagpt-$(echo "$QUANT" | tr 'A-Z' 'a-z').gguf"
@@ -30,7 +31,7 @@ if [[ -f "$FINAL" ]]; then
   echo "== $FINAL already exists (delete it to rebuild)"
 else
   # 1) merged bf16 model (skips itself if already done)
-  if [[ ! -f "$MERGED/MERGED_FROM.json" ]]; then need_gib 18 "$ROOT"; fi
+  if [[ ! -f "$MERGED/MERGED_FROM.json" ]]; then need_gib $((MODEL_GIB + 2)) "$ROOT"; fi
   run_py -m finetune.export
 
   # 2) llama.cpp converter (Python script, same commit as the binaries) + quantize binary
@@ -52,7 +53,7 @@ else
   fi
 
   # 3) HF -> GGUF (f16), then quantize
-  need_gib 23 "$OUT"
+  need_gib $((MODEL_GIB * 4 / 3 + 2)) "$OUT"   # f16 GGUF + quantized copy
   echo "== converting to GGUF (f16)"
   "$TOOLS/venv/bin/python" "$TOOLS/convert_hf_to_gguf.py" "$MERGED" --outtype f16 --outfile "$F16"
   echo "== quantizing to $QUANT"
