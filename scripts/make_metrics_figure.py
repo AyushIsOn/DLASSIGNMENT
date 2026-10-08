@@ -176,8 +176,8 @@ def main() -> None:
         (w / 2, "f", "f_ci", TUNED, "AcharyaGPT (fine-tuned)"),
     ):
         values = [100 * r[key]["accuracy"] for r in rows]
-        lower = [v - 100 * r[ci][0] for v, r in zip(values, rows, strict=True)]
-        upper = [100 * r[ci][1] - v for v, r in zip(values, rows, strict=True)]
+        lower = [max(0.0, v - 100 * r[ci][0]) for v, r in zip(values, rows, strict=True)]
+        upper = [max(0.0, 100 * r[ci][1] - v) for v, r in zip(values, rows, strict=True)]
         bars = ax.bar(
             [i + offset for i in x],
             values,
