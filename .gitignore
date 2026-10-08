@@ -28,3 +28,7 @@ xcuserdata/
 
 # Built by finetune.build_dataset (87 MB; rebuilt on the CPU Studio)
 data/db/
+
+# Android build outputs (the signed APK itself is committed)
+android/build/
+*.keystore

@@ -1,11 +1,14 @@
-"""FastAPI app used by the iOS client: GET /health/live, GET /health/ready, POST /v1/chat."""
+"""FastAPI app: GET / (web chat for any phone browser / the Android app), GET /health/live,
+GET /health/ready, POST /v1/chat (also used by the iOS app)."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from acharya.schemas import ChatRequest, ChatResponse, HealthResponse
 from acharya.service import ChatService, ModelUnavailable
@@ -48,6 +51,12 @@ def create_app(service: ChatService) -> FastAPI:
         response = health(live=False)
         return JSONResponse(status_code=200 if response.ready else 503,
                             content=response.model_dump(mode="json"))
+
+    page = (Path(__file__).parent / "web" / "index.html").read_text(encoding="utf-8")
+
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    def web_chat() -> HTMLResponse:
+        return HTMLResponse(page)
 
     @app.post("/v1/chat", response_model=ChatResponse)
     def chat(request: ChatRequest) -> ChatResponse:  # sync: runs in FastAPI's threadpool

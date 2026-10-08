@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,56 @@ from finetune.common import Config, write_json
 
 COLORS = {"base": "#94a3b8", "finetuned": "#0f766e"}
 LABELS = {"base": "base model", "finetuned": "AcharyaGPT (fine-tuned)"}
+
+
+def wilson(correct: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """95% Wilson score interval for a proportion (better than +-1.96*SE for small n or p~1)."""
+    if n == 0:
+        return 0.0, 0.0
+    p = correct / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def mcnemar_p(only_finetuned: int, only_base: int) -> float:
+    """Exact two-sided McNemar test on paired answers (same questions, both models)."""
+    n = only_finetuned + only_base
+    if n == 0:
+        return 1.0
+    k = min(only_finetuned, only_base)
+    tail = sum(math.comb(n, i) for i in range(k + 1)) / 2 ** n
+    return min(1.0, 2 * tail)
+
+
+def significance(config: Config) -> list[dict[str, Any]]:
+    """Per test group: accuracy with 95% CI for both models + McNemar p-value."""
+    from finetune.data import read_split
+
+    path = config.eval_dir / "generations.jsonl"
+    if not path.is_file():
+        return []
+    group = {row["id"]: row["meta"]["group"] for row in read_split(config.data_dir, "test")}
+    correct: dict[tuple[str, str], bool] = {}
+    for line in path.read_text().splitlines():
+        if line.strip():
+            record = json.loads(line)
+            correct[(record["id"], record["model"])] = bool(record["metrics"]["correct"])
+    table = []
+    for name in sorted({g for g in group.values()}):
+        ids = [i for i, g in group.items() if g == name
+               and (i, "base") in correct and (i, "finetuned") in correct]
+        if not ids:
+            continue
+        b = sum(correct[(i, "base")] for i in ids)
+        f = sum(correct[(i, "finetuned")] for i in ids)
+        only_f = sum(correct[(i, "finetuned")] and not correct[(i, "base")] for i in ids)
+        only_b = sum(correct[(i, "base")] and not correct[(i, "finetuned")] for i in ids)
+        table.append({"group": name, "n": len(ids), "base": b / len(ids),
+                      "base_ci": wilson(b, len(ids)), "finetuned": f / len(ids),
+                      "finetuned_ci": wilson(f, len(ids)), "only_finetuned_correct": only_f,
+                      "only_base_correct": only_b, "mcnemar_p": mcnemar_p(only_f, only_b)})
+    return table
 
 
 def read_metrics(path: Path) -> list[dict[str, Any]]:
@@ -174,6 +225,23 @@ def build(config: Config) -> dict[str, Any]:
         b, f = results["groups"][g]["base"], results["groups"][g]["finetuned"]
         lines.append(f"| {results['group_labels'][g]} | {b['n']} | {pct(b['accuracy'])} | "
                      f"**{pct(f['accuracy'])}** | {100 * (f['accuracy'] - b['accuracy']):+.1f} |")
+    stats = significance(config)
+    if stats:
+        lines += ["", "## Statistical significance", "",
+                  "Accuracy with a 95% Wilson confidence interval; McNemar's exact test on the "
+                  "paired answers (same questions, base vs fine-tuned).", "",
+                  "| Test group | n | Base [95% CI] | Fine-tuned [95% CI] | only FT right / "
+                  "only base right | McNemar p |", "|---|---:|---:|---:|---:|---:|"]
+        for item in stats:
+            lo_b, hi_b = item["base_ci"]
+            lo_f, hi_f = item["finetuned_ci"]
+            p_value = item["mcnemar_p"]
+            shown_p = "<0.001" if p_value < 0.001 else f"{p_value:.3f}"
+            lines.append(
+                f"| {item['group']} | {item['n']} | {pct(item['base'])} "
+                f"[{pct(lo_b)}-{pct(hi_b)}] | {pct(item['finetuned'])} "
+                f"[{pct(lo_f)}-{pct(hi_f)}] | {item['only_finetuned_correct']} / "
+                f"{item['only_base_correct']} | {shown_p} |")
     lines += ["", "![accuracy by group](accuracy_by_group.png)", "",
               "## Knowledge recall by question type", "",
               "| Question type | n | Base | Fine-tuned |", "|---|---:|---:|---:|"]
@@ -224,6 +292,7 @@ def build(config: Config) -> dict[str, Any]:
     ]
     (out / "REPORT.md").write_text("\n".join(lines) + "\n")
     summary = {"overall": overall, "groups": results["groups"], "test_answer_loss": losses,
+               "significance": stats,
                "training": {k: training.get(k) for k in (
                    "global_step", "epochs_completed", "train_runtime_minutes",
                    "base_model_validation_loss", "best_validation_loss", "peak_gpu_memory_gib")}}
